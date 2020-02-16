@@ -1,9 +1,3 @@
-attempt at implementing reuse heirarchical elements.
-It requires "skipfun" logic in innner loop e.g. colFunLoopIsoOrtho
-this adds about 20% overhead. cancels out benefit. would need to figure out a way to pack non-skipfuns
-
-
-
 
 ========================================================================
     CONSOLE APPLICATION : SRwithMkl Project Overview
