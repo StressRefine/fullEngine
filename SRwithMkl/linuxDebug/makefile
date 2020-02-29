@@ -43,7 +43,7 @@ all: fullSRwithMkl
 fullSRwithMkl: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/opt/intel/mkl/lib/intel64 -o "fullSRwithMkl" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L/opt/intel/compilers_and_libraries_2020.0.166/linux/mkl/lib/intel64_lin -o "fullSRwithMkl" $(OBJS) $(USER_OBJS) $(LIBS) -static
 	@echo 'Finished building target: $@'
 	@echo ' '
 
