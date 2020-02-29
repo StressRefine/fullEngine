@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 #include "SRbasis.h"
 
@@ -50,7 +49,7 @@ int SRbasis::QuadFaceBasisFuncs(double r, double s, int *directionv, int *pejv, 
 		//basisvec = vector of basis functions
 	//return:
 		//total number of basis functions
-	int fun, n;
+	int fun;
 	int pmax = 0;
 
 	//corner and midedge functions:

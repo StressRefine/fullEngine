@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 extern SRmodel model;
@@ -505,9 +504,8 @@ void SRedge::ProcessForce(SRforce *force, SRvec3& resF)
 	//output:
 		//ResF = updated
 
-	int i, n, dof, nint, gp, eq, gfun;
+	int i, dof, nint, gp, eq, gfun;
 	SRgaussPoint* g1d;
-	n = globalFunctionNumbers.GetNum();
 	double* globalForce = model.solution.GetVector();
 	double r, w, basis[10], ds, bw, forceVal[3];
 	nint = pOrder + 1;
@@ -561,9 +559,6 @@ void SRedge::PutBoundaryFaceId(int f, int lej)
 
 bool SRedge::checkKinkOK(SRface* face0, int lej0, SRface* face1, int lej1)
 {
-	double kinkTol = 0.9848; //10 degrees
-	if (model.allFacesFlat)
-		kinkTol = 0.866; //30 degrees
 	double r, s;
 	SRvec3 norm0, norm1;
 	face0->NaturalCoordinatesNearMidedge(lej0, r, s);

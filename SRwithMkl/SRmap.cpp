@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 #ifdef _DEBUG

@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRutil.h"
 #include "SRmodel.h"
 
@@ -70,6 +69,10 @@ void SRmaterial::PutMaxSvm(double s)
 		maxStress = s;
 };
 
+const char* SRmaterial::GetName()
+{
+	return name.getStr();
+};
 
 void SRmaterial::IsoCreate(double et, double nut)
 {
@@ -120,7 +123,7 @@ double SRmaterial::MatScale()
 
 void SRmaterial::printToFile(SRfile &f)
 {
-	f.Print(" %s", name.str);
+	f.Print(" %s", name.getStr());
 	if (type == iso)
 	{
 		f.Print(" isotropic");

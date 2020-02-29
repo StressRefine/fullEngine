@@ -38,9 +38,6 @@ class SRfile;
 class SRvec3;
 class SRBreakoutData;
 
-enum SRentityType;
-
-
 enum SRstressComponent { xxComponent, yyComponent, zzComponent, xyComponent, xzComponent, yzComponent };
 
 class SRpostStressVector
@@ -111,8 +108,8 @@ public:
 	int fillBreakoutModelOriginFromHCentroidStresses(SRBreakoutData *bdat, bool SBonlyNoBsurfNoSacr = false);
 	int fillBreakoutModelOriginFromHCentroidStressesElemRadList(SRBreakoutData *bdat, int nelToCheck);
 	void PlotSBElems(char* inName = NULL, int filenum = -1);
-	void PlotElems(int numel, int* elems, char* inName = NULL, int filenum = -1);
-	void PlotElemsSBOnly(int numel, int* elems, char* inName = NULL, int filenum = -1);
+	void PlotElems(int numel, int* elems, const char* inName = NULL, int filenum = -1);
+	void PlotElemsSBOnly(int numel, int* elems, const char* inName = NULL, int filenum = -1);
 	void PlotFaces(int numFace, SRface* facev[]);
 	void PlotFaces(int numFace, int fid[]);
 	void PlotEdges(int numEdge, int edgeId[]);

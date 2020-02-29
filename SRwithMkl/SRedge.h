@@ -59,7 +59,7 @@ class SRlocalEdge
 	friend class SRinput;
 
 public:
-	SRlocalEdge::SRlocalEdge();
+	SRlocalEdge();
 	int GetPOrder();
 	SRedge* GetEdge();
 	int GetGlobalEdgeId(){ return globalEdgeId; };

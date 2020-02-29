@@ -32,12 +32,13 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdlib.h>
 #include <omp.h>
 #include "SRmodel.h"
 #include "SRinput.h"
+#ifndef NOSOLVER
 #include "mkl.h"
+#endif
 
 //////////////////////////////////////////////////////////////////////
 
@@ -67,9 +68,6 @@ void SRmodel::Initialize()
 	freezeSacrificalP = 2;
 	detectThinElements = false;
 	freezeSacrEdges = true;
-	elemSecs = 0.0;
-	bkpSecs = 0.0;
-	solvSecs = 0.0;
 	maxNodeUid = 0;
 	maxElemUid = 0;
 	adaptIt = 0;
@@ -105,7 +103,6 @@ void SRmodel::Initialize()
 	lengthUnitConversion = 1.0;
 	lengthUnitstr = "m";
 	anyUnsupportedFace = false;
-	ReadDispStressSRR = false;
 	useUnits = true;
 	checkForHotSpotatMax = true;
 	anyHotSpotElFound = false;
@@ -122,7 +119,7 @@ void SRmodel::Initialize()
 }
 
 
-static char *stressComp[6] = { "xx", "yy", "zz", "xy", "xz", "yz"};
+static const char *stressComp[6] = { "xx", "yy", "zz", "xy", "xz", "yz"};
 
 void SRmodel::Run()
 {
@@ -150,7 +147,6 @@ void SRmodel::Run()
 	//3. post-process
 		//output mesh, displacement results file, and stress results file. output summary quantities
 
-	double sInitial, sElapsed;
 	double errForOutput = 0.0;
 	if (pOrderUniform)
 		passData.Allocate(8);
@@ -171,12 +167,7 @@ void SRmodel::Run()
 		return;
 	}
 
-	double availmem = SRmachDep::availMemCheck();
-	MaxElementMem = 0.5*availmem;
-	int mbytes = (int)(availmem / 1.049E6);
-	OUTPRINT("available memory for run: %d MBytes\n", mbytes);
-
-	int its, neq = 0;
+	int its;
 
 	if (freezeSacrificalP > maxPorder)
 		freezeSacrificalP = maxPorder;
@@ -211,9 +202,6 @@ void SRmodel::Run()
 
 	bool adapted = true;
 
-	sInitial = dsecnd();
-	double sPrev = sInitial;
-
 	nodeUidAtMaxDisp = 0;
 
 
@@ -240,14 +228,16 @@ void SRmodel::Run()
 
 		LOGPRINT("Calculating Element Stiffness\n");
 
-		sPrev = dsecnd();
-
 		CheckElementsFitInMemory();
 		SCREENPRINT("Adaptive Iteration: %d. Calculating element stiffnesses\n", adaptIt + 1);
 		CalculateElementStiffnesses(anyLcsEnfd);
 
-		sElapsed = (dsecnd() - sPrev);
-		elemSecs += sElapsed;
+#ifdef NOSOLVER
+		SCREENPRINT("Cannot proceed further without solver\n");
+		LOGPRINT("Cannot proceed further without solver\n");
+		REPPRINT("Cannot proceed further without solver\n");
+		exit(0);
+#endif
 
 		if (needSoftSprings)
 			AddSoftSprings();
@@ -331,7 +321,7 @@ void SRmodel::Run()
 	if (breakout)
 	{
 		fileNameTail.Left('_', line);
-		frep.PrintLine("Results of StressRefine breakout Analysis from model %s", line.str);
+		frep.PrintLine("Results of StressRefine breakout Analysis from model %s", line.getStr());
 	}
 	else
 	{
@@ -341,8 +331,8 @@ void SRmodel::Run()
 	}
 	if (useUnits)
 	{
-		frep.PrintLine("Units of Stress: %s", stressUnitstr.str);
-		frep.PrintLine("Units of Length: %s", lengthUnitstr.str);
+		frep.PrintLine("Units of Stress: %s", stressUnitstr.getStr());
+		frep.PrintLine("Units of Length: %s", lengthUnitstr.getStr());
 	}
 	else
 	{
@@ -455,7 +445,7 @@ void SRmodel::Run()
 
 	frep.Close();
 	
-	OUTPRINT("\n\nFinal result for Model: %s\n", fileNameTail.str);
+	OUTPRINT("\n\nFinal result for Model: %s\n", fileNameTail.getStr());
 	PStats();
 	OUTPRINT("Total Volume of Model : %lg\n", volume);
 	sumFile.PrintLine("Final Result");
@@ -551,7 +541,7 @@ bool SRmodel::Adapt(int pIteration, bool checkErrorOnly)
 
 	if (!checkErrorOnly)
 	{
-		OUTPRINTRET;
+		OUTPRINT("\n");
 		OUTPRINT("Maximum von Mises Stress in Model: %lg\n", stressMax);
 		OUTPRINT("Maximum Stress Components in Model\n");
 		PrintStresses(stressMaxComp);
@@ -983,6 +973,9 @@ void SRmodel::CalculateElementStiffnesses(bool anyLcsEnfd)
 
 bool SRmodel::CalculateElementStiffnessesOmp()
 {
+#ifdef linux
+	return false;
+#else
 	//calculate elemental stiffness matrix for all elements in model using multiple processors
 	//note:
 	//only call this if there is more than one thread and elements fit in memory
@@ -1028,6 +1021,7 @@ bool SRmodel::CalculateElementStiffnessesOmp()
 		SCREENPRINT(" exception during parallel element calculation");
 		return false;
 	}
+#endif
 }
 
 void SRmodel::Create()
@@ -1208,7 +1202,6 @@ void SRmodel::ProcessConstraints()
 
 
 	int i, dof, gfun;
-	SRedge* edge;
 	SRconstraint* con;
 	SRnode* node;
 
@@ -1253,7 +1246,6 @@ void SRmodel::ProcessConstraints()
 		con = GetConstraint(i);
 		if (!con->isGcs())
 			continue;
-		int eid = con->GetEntityId();
 		if (con->isBreakout() && (con->GetType() != nodalCon))
 		{
 			//breakout constraints are always face constraints
@@ -1340,7 +1332,6 @@ bool SRmodel::PreProcessPenaltyConstraints()
 		if (!con->isGcs() && !con->breakout)
 		{
 			int n = con->GetEntityId();
-			SRnode* node = nodes.GetPointer(n);
 			bool found = false;
 			for (int f = 0; f < faces.GetNum(); f++)
 			{
@@ -1500,11 +1491,9 @@ void SRmodel::FillGlobalFaces(bool needGlobalNodeOrderForBreakout)
 
 void SRmodel::FindElemsAdjacentToBreakout()
 {
-	int el, lface, n1, n2, n3, n4, gn1, gn2, gn3, gn4, gface;
+	int lface, n1, n2, n3, n4, gn1, gn2, gn3, gn4, gface;
 	SRface* face;
-	int gej, direction;
 	SRelement* elem;
-	bool anyAdjElFound = false;
 	for (int i = 0; i < elements.GetNum(); i++)
 	{
 		elem = GetElement(i);
@@ -1684,7 +1673,6 @@ void SRmodel::ProcessForces()
 				fv[dof] = force->GetForceVal(0, dof);
 			bool needRotate = false;
 			SRmat33 R;
-			double rf, sf;
 			if (force->GetCoordId() != -1)
 			{
 				needRotate = true;
@@ -2120,7 +2108,6 @@ double* SRmodel::ReadElementStiffness(SRelement* elem, bool readPrevP, int proce
 	double *stiff = NULL;
 	if (elementsInMemory)
 	{
-		int id = elem->GetId();
 		stiff = elem->GetStiffnessMatrix();
 	}
 	else
@@ -2494,7 +2481,6 @@ bool SRmodel::SingStressCheck()
 	if (breakout)
 		distTol = MATHMIN(distTol, post.maxRadNearOrigin);
 	double sacrDistMin = BIG;
-	int elAtMinDist;
 	for (int e = 0; e < GetNumElements(); e++)
 	{
 		SRelement* elem = GetElement(e);
@@ -2506,13 +2492,10 @@ bool SRmodel::SingStressCheck()
 		if (dist < sacrDistMin)
 		{
 			sacrDistMin = dist;
-			elAtMinDist = e;
 		}
 	}
 	if (sacrDistMin < distTol)
 	{
-		int maxStressEluid = GetElement(maxStressElid)->userId;
-		int elUidAtmindist = GetElement(elAtMinDist)->userId;
 		return true;
 	}
 	else
@@ -2557,35 +2540,30 @@ void SRmodel::AddSoftSprings()
 	}
 }
 
-void SRmodel::readResultsSrr()
+bool SRmodel::readResultsSrr()
 {
 	SRfile f;
 	SRstring line, tok;
 	inputFile.filename.Left('.', line);
 	line += ".srr";
 	if (!f.Open(line, SRinputMode))
-	{
-		REPPRINT("Error: Nastran displacement results not available or incomplete");
-		ERROREXIT;
-	}
+		return false;
+	SCREENPRINT("reading FEA displacements\n");
 	f.GetLine(line);
 	if (!line.CompareUseLength("displacements"))
 	{
 		REPPRINT("Error: Nastran displacement results not available or incomplete");
 		ERROREXIT;
+		return false;
 	}
 	int nuid;
 	SRvec3 disp;
 	int nnode = nodes.GetNum();
 	post.nodeDisps.Allocate(nnode);
 
-
 	int numDispsRead = 0;
 	SRstring linesav;
 	SRnode* node;
-
-	int iStart = 0;
-	int nid;
 
 	bool eidmaxLineRead = false;
 
@@ -2598,7 +2576,7 @@ void SRmodel::readResultsSrr()
 			eidmaxLineRead = true;
 			break;
 		}
-		line.setTokSep(",");
+		line.setTokSep(',');
 		linesav = line;
 		if (!line.TokRead(nuid))
 			break;
@@ -2630,6 +2608,7 @@ void SRmodel::readResultsSrr()
 				{
 					REPPRINT("Error: Nastran Displacement results file incompatible with model file");
 					ERROREXIT;
+					return false;
 				}
 			}
 		}
@@ -2647,6 +2626,7 @@ void SRmodel::readResultsSrr()
 			//fatal error if stresses are needed:
 			REPPRINT("Error: Nastran stress results not available. Cannot solve local region at maximum stress in model");
 			ERROREXIT;
+			return false;
 		}
 
 		int eluidatmax = -1;
@@ -2659,12 +2639,14 @@ void SRmodel::readResultsSrr()
 		{
 			REPPRINT("Error: Nastran stress results not available. Cannot solve local region at maximum stress in model");
 			ERROREXIT;
+			return false;
 		}
 		SRelement* elem = GetElement(eid);
 		elem->approxCentroid(feavmmaxpos);
 		saveBreakoutData.origin.Copy(feavmmaxpos);
 	}
 	f.Close();
+	return true;
 }
 
 double SRmodel::findMaxStressNearBreakoutOrigin()
@@ -2741,12 +2723,15 @@ void SRmodel::checkForHotSpotElemsNearBreakoutBoundary()
 
 void SRmodel::SetNumThreads()
 {
+	maxNumThreads = 1;
+#ifndef linux
 #pragma omp parallel
 #pragma omp master
 	{
 		maxNumThreads = omp_get_num_threads();
 		SCREENPRINT(" Using %d processors for parallel calculations\n", maxNumThreads);
 	}
+#endif
 }
 
 void SRmodel::UpdateCustomCriterion(double stress[])

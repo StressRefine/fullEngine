@@ -81,7 +81,7 @@ public:
 	void Cleanup();
 	void SortNodes();
 	void SortElems();
-	void GetBinaryFileName(char* ext, SRstring& name);
+	void GetBinaryFileName(const char* ext, SRstring& name);
 	void InputNodalConstraints();
 	void InputBreakoutConstraints(int nbr);
 	void InputnodalBreakoutConstraints(int nbr);

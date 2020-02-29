@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdlib.h>
 #include <search.h>
 #include "SRmodel.h"
@@ -148,7 +147,6 @@ int SRpostProcess::findSaveBreakoutElementsTopo(int nel, int& nelAllNodesDisp, b
 	nelBreakout = topoFilterSaveBreakoutElems(topoIsRagged);
 	nelBreakoutMax = nelBreakoutMaxTopo;
 
-	bool did2ndAutoSphere = false;
 	if (nelBreakout < minElForBreakout)
 	{
 		REPPRINT("Warning: Breakout Model is small for accurate stress calculation.");
@@ -177,7 +175,6 @@ int SRpostProcess::findSaveBreakoutElementsTopo(int nel, int& nelAllNodesDisp, b
 			//even if entire part had been identified, this trimming pass will make breakout
 			//ragged again:
 			topoIsRagged = true;
-			did2ndAutoSphere = true;
 		}
 	}
 
@@ -194,7 +191,6 @@ int SRpostProcess::findSaveBreakoutElementsTopo(int nel, int& nelAllNodesDisp, b
 			elemRadiusList.Allocate(nel);
 			SRvec3 pos;
 			SRvec3* posOrigin = &bdat->origin;
-			int elemListLength = nel;
 
 			for (int i = 0; i < nel; i++)
 			{
@@ -283,8 +279,7 @@ void SRpostProcess::saveBreakoutModel()
 	model.input.nodeEdges.Allocate(nnode, 20);
 	model.input.numNodeFaces.Allocate(nnode);
 	model.input.nodeFaces.Allocate(nnode, MAXNODEFACEOWNERS);
-	if(model.ReadDispStressSRR)
-		SCREENPRINT("reading FEA displacements\n");
+
 	readPreviousDisplacementForBreakout();
 
 	SCREENPRINT("determining breakout region\n");
@@ -305,7 +300,6 @@ void SRpostProcess::saveBreakoutModel()
 
 
 		SRvec3 localPos;
-		double localRad;
 		SRvec3 bktorigin;
 
 		nelAllNodesDisp = 0;
@@ -379,7 +373,6 @@ void SRpostProcess::saveBreakoutModel()
 	int numfaces = model.GetNumFaces();
 	breakoutConstraints.Allocate(numfaces);
 	breakoutElemUids.Allocate(numfaces);
-	int numNewConstraints = 0;
 	int numBreakoutCon = 0;
 	SRvec3 enfDisp;
 	for (int f = 0; f < numfaces; f++)
@@ -488,12 +481,12 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 	bdat->saveBreakoutMshFile.filename.Left('\\', line);
 	line += "\\report.txt";
 	if (SRfile::Existcheck(line))
-		SRfile::Delete(line.str);
+		SRfile::Delete(line.getStr());
 	bdat->saveBreakoutMshFile.filename.Left('.', line);
 	line += ".srs";
 	SRfile bktSrs;
 	bktSrs.Open(line, SRoutputMode);
-	bktSrs.PrintLine("breakout %lg %d //maxradnearorigin, atnode, from model %s", maxRadNearOrigin, bdat->bktNode, model.fileNameTail.str);
+	bktSrs.PrintLine("breakout %lg %d //maxradnearorigin, atnode, from model %s", maxRadNearOrigin, bdat->bktNode, model.fileNameTail.getStr());
 	bktSrs.PrintLine("//Number of elements in Breakout model: %d", nelBreakout);
 	int nbktElSacr = 0;
 	for (int i = 0; i < bktElSacrList.GetNum(); i++)
@@ -506,8 +499,8 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 
 	if (model.useUnits)
 	{
-		bktSrs.PrintLine("stress_conversion %lg %s", model.stressUnitConversion, model.stressUnitstr.str);
-		bktSrs.PrintLine("length_conversion  %lg %s", model.lengthUnitConversion, model.lengthUnitstr.str);
+		bktSrs.PrintLine("stress_conversion %lg %s", model.stressUnitConversion, model.stressUnitstr.getStr());
+		bktSrs.PrintLine("length_conversion  %lg %s", model.lengthUnitConversion, model.lengthUnitstr.getStr());
 	}
 	else
 		bktSrs.PrintLine("NOUNITS");
@@ -535,7 +528,7 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 	//output breakout model:
 	SRfile& bf = bdat->saveBreakoutMshFile;
 	bf.Open(SRoutputMode);
-	bf.PrintLine("breakout //from model %s", model.fileNameTail.str);
+	bf.PrintLine("breakout //from model %s", model.fileNameTail.getStr());
 	bf.PrintLine("//Number of elements in Breakout model: %d", nelBreakout);
 
 	bf.PrintLine("nodes");
@@ -678,7 +671,7 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 
 	if (numBreakoutCon > 0)
 	{
-		bf.PrintLine("breakoutConstraints");
+		bf.PrintLine("breakoutconstraints");
 		for (int i = 0; i < numBreakoutCon; i++)
 		{
 			SRconstraint* con = breakoutConstraints.GetPointer(i);
@@ -703,7 +696,7 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 				bf.PrintReturn();
 			}
 		}
-		bf.PrintLine("end breakoutConstraints");
+		bf.PrintLine("end breakoutconstraints");
 	}
 	breakoutConstraints.Free();
 	breakoutElemUids.Free();
@@ -890,13 +883,10 @@ void SRpostProcess::readPreviousDisplacementForBreakout()
 		return;
 	nodeDisps.Allocate(model.GetNumNodes());
 	//read displacement results for the model from a previous run for use in creating breakout models
-	if (model.ReadDispStressSRR)
-		model.readResultsSrr();
-	else
+	if(!model.readResultsSrr())
 		readPreviousResultsF06();
 	if (model.saveBreakout)
 		model.setElemsAllNodesHaveDisp();
-
 }
 
 void SRpostProcess::SortElemsByRadius()
@@ -952,10 +942,7 @@ void SRpostProcess::findElidAtRad0andSetSB(SRBreakoutData *bdat)
 	int nel = model.GetNumElements();
 
 	elemRadiusList.Allocate(nel);
-	int elemListLength = nel;
 
-
-	double minDist = BIG;
 	for (int i = 0; i < nel; i++)
 	{
 		SRelement* elem = model.GetElement(i);
@@ -984,7 +971,6 @@ int SRpostProcess::autoBreakoutSphere(SRBreakoutData *bdat, int NumElBreakoutCan
 	elemRadiusList.Allocate(nel);
 	SRvec3 pos;
 	SRvec3* posOrigin = &bdat->origin;
-	int elemListLength = nel;
 
 	for (int i = 0; i < nel; i++)
 	{
@@ -1038,7 +1024,6 @@ void SRpostProcess::autoLocalAdapt()
 
 	elemRadiusList.Allocate(nel);
 	SRvec3 pos;
-	int elemListLength = nel;
 
 	for (int i = 0; i < nel; i++)
 	{
@@ -1225,7 +1210,7 @@ int SRpostProcess::fillBreakoutModelOriginFromHCentroidStresses(SRBreakoutData *
 	for (int e = 0; e < nel; e++)
 	{
 		SRelement* elem = model.GetElement(e);
-		if (SBonlyNoBsurfNoSacr && !elem->saveForBreakout || (elem->sacrificial != 0) )
+		if ( (SBonlyNoBsurfNoSacr && !elem->saveForBreakout) || (elem->sacrificial != 0) )
 			continue;
 		if (elem->allNodesHaveDisp)
 		{
@@ -1353,7 +1338,6 @@ bool SRpostProcess::findSacrificialElementsAtKinks()
 	singNode.Allocate(nnode);
 	SRintVector singEdge;
 	singEdge.Allocate(model.GetNumEdges());
-	bool anySingNode = false;
 	bool anySingEdge = false;
 
 	//check for reentrant corners faces on surface; singular unless
@@ -1401,8 +1385,6 @@ bool SRpostProcess::findSacrificialElementsAtKinks()
 
 	for (int i = 0; i < nej; i++)
 	{
-		SRedge* edge = model.GetEdge(i);
-
 		int f1 = edgeface1.Get(i);
 		int f2 = edgeface2.Get(i);
 		if (f1 == -1 || f2 == -1)
@@ -1436,11 +1418,6 @@ bool SRpostProcess::findSacrificialElementsAtKinks()
 				if (normdot < dotmin)
 				{
 					dotmin = normdot;
-					SRelement* elem;
-					int eid = face->GetElementOwner(0);
-					elem = model.GetElement(eid);
-					eid = face2->GetElementOwner(0);
-					elem = model.GetElement(eid);
 				}
 				if (normdot >= -0.1)
 				{

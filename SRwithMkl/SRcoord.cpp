@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 #ifdef _DEBUG
@@ -87,7 +86,7 @@ void SRcoord::CalculateBasisVectors(SRvec3& p, SRvec3 &e1l, SRvec3 &e2l, SRvec3 
 	{
 		OUTPRINT("improperly defined curvilinear coordinate system %s", GetName());
 		OUTPRINT("point defining R direction is coincident with origin");
-		REPPRINT("improperly defined curvilinear coordinate system %s", GetName());
+		LOGPRINT("improperly defined curvilinear coordinate system %s", GetName());
 		REPPRINT("point defining R direction is coincident with origin");
 		ERROREXIT;
 	}
@@ -159,6 +158,11 @@ void SRcoord::CalculateLocalDirection(SRvec3& p, int dof, SRvec3 &el)
 		el.Copy(e3l);
 }
 
+const char* SRcoord::GetName()
+{
+	return name.getStr();
+};
+
 
 void SRcoord::GetRotationMatrix(bool toLocal, SRvec3& p, SRmat33& R)
 {
@@ -206,7 +210,6 @@ void SRcoord::Create(double x0, double y0, double z0, SRvec3 p13, SRvec3 p3)
 
 void SRcoord::PrintToFile(SRfile& f)
 {
-	bool gcs = false;
 	SRvec3 p1, p3;
 	if (!gcsAligned)
 	{
@@ -216,7 +219,7 @@ void SRcoord::PrintToFile(SRfile& f)
 		p3.PlusAssign(e3);
 	}
 
-	f.Print("%s", name.str);
+	f.Print("%s", name.getStr());
 	if (type == cartesian)
 		f.Print(" cartesian");
 	else if (type == spherical)

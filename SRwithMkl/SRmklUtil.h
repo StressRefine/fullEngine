@@ -35,6 +35,9 @@ with an equivalent open-source solver
 
 #if !defined(SRMKLUTIL_INCLUDED)
 #define SRMKLUTIL_INCLUDED
+#include "SRmachDep.h"
+#ifndef NOSOLVER
+
 #include "mkl.h"
 #include "SRutil.h"
 
@@ -147,7 +150,6 @@ public:
 	};
 	void Set(MKL_INT64 val)
 	{
-		MKL_INT64 n;
 		for (MKL_INT64 i = 0; i < num; i++)
 			d[i] = val;
 	};
@@ -300,6 +302,9 @@ private:
 	double* d;
 	MKL_INT64 num;
 };
+
+#endif //NOSOLVER
+
 
 #endif //!defined(SRMKLUTIL_INCLUDED)
 

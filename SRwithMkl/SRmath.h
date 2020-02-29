@@ -344,7 +344,7 @@ class SRgauss1d
 public:
 	//data:
 	SRgaussPoint* gauss1d[10];
-	SRgauss1d::SRgauss1d()
+	SRgauss1d()
 	{
 		gauss1d[0] = gauss1d2; gauss1d[1] = gauss1d3; gauss1d[2] = gauss1d4;
 		gauss1d[3] = gauss1d5; gauss1d[4] = gauss1d6; gauss1d[5] = gauss1d7;

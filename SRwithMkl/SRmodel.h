@@ -52,7 +52,7 @@ with an equivalent open-source solver
 #include "SRsolver.h"
 #include "SRcoord.h"
 #include "SRmaterial.h"
-#include "SRConstraint.h"
+#include "SRconstraint.h"
 #include "SRforce.h"
 #include "SRmap.h"
 #include "SRnode.h"
@@ -298,7 +298,7 @@ public:
 	bool GetAnyBricks(){ return anybricks; };
 	void GetFileNameFromExtension(char* ext, SRstring& name);
 	bool SingStressCheck();
-	void readResultsSrr();
+	bool readResultsSrr();
 	double findMaxStressNearBreakoutOrigin();
 	void checkForHotSpotElemsNearBreakoutBoundary();
 
@@ -426,9 +426,6 @@ public:
 	SRBreakoutData saveBreakoutData;
 
 	bool saveBreakout;
-	double elemSecs;
-	double bkpSecs;
-	double solvSecs;
 	bool allMatsHaveAllowable;
 	double maxAllowableAnyActiveMat;
 	int numFlattenedElHighStress;

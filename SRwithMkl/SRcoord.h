@@ -51,7 +51,7 @@ public:
 	void Copy(SRcoord& c2);
 	void operator =(SRcoord& c2){ Copy(c2); };
 	SRcoordType GetType(){ return type; };
-	char* GetName(){ return name.str; };
+	const char* GetName();
 	void PrintToFile(SRfile& f);
 	void GetPos(double &x, double &y, double &z, SRvec3& pos);
 	void VecTransform(SRvec3 p, SRvec3 &v);

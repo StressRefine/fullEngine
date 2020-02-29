@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdlib.h>
 #include <search.h>
 #include "SRmodel.h"
@@ -83,17 +82,19 @@ void SRinput::ReadModel()
 
 	GetBinaryFileName("elstiffEven", filename);
 	model.elementFileEven.filename = filename;
-	model.elementFileEven.Delete();
+	if(SRfile::Existcheck(filename))
+		model.elementFileEven.Delete();
 	GetBinaryFileName("elstiffOdd", filename);
 	model.elementFileOdd.filename = filename;
-	model.elementFileOdd.Delete();
+	if(SRfile::Existcheck(filename))
+		model.elementFileOdd.Delete();
 
 	LOGPRINT("\nReading Settings...");
 	readSettings();
 
 	if (!model.inputFile.Open(SRinputMode))
 	{
-		char *tmp = filename.LastChar('\\', true);
+		const char *tmp = filename.LastChar('\\', true);
 		LOGPRINT(" file not found: %s", tmp);
 		ERROREXIT;
 		return;
@@ -147,7 +148,7 @@ void SRinput::ReadModel()
 			CountEntities(nBreakoutCon);
 		else if (line == "faceConstraints")
 			CountEntities(nFaceCon);
-		else if (line == "nodalbreakoutConstraints")
+		else if (line == "nodalbreakoutconstraints")
 			CountEntities(numNodalBreakoutCons);
 		else if (line.CompareUseLength("coord"))
 		{
@@ -282,7 +283,7 @@ void SRinput::ReadModel()
 			InputNodalConstraints();
 		else if (line == "breakoutConstraints")
 			InputBreakoutConstraints(nBreakoutCon);
-		else if (line == "nodalbreakoutConstraints")
+		else if (line == "nodalbreakoutconstraints")
 			InputnodalBreakoutConstraints(numNodalBreakoutCons);
 		else if (line == "faceConstraints")
 			InputFaceConstraints(nFaceCon);
@@ -634,9 +635,9 @@ void SRinput::InputMaterials()
 			}
 			if (!mat->genAnisoCij.symCheck())
 			{
-				OUTPRINT("improper definition of general anisotropic material %s", mat->name.str);
+				OUTPRINT("improper definition of general anisotropic material %s", mat->name.getStr());
 				OUTPRINT("material is not symmetric");
-				REPPRINT("improper definition of general anisotropic material %s", mat->name.str);
+				REPPRINT("improper definition of general anisotropic material %s", mat->name.getStr());
 				REPPRINT("material is not symmetric");
 				ERROREXIT;
 			}
@@ -664,7 +665,7 @@ void SRinput::InputCoordinates()
 	SRstring line, type, tok;
 	SRcoord* coord;
 	int ncoord = 0;
-	double alf, bet, gam, x0, y0, z0;
+	double x0, y0, z0;
 	bool gcsaligned;
 
 	while (1)
@@ -818,16 +819,9 @@ void SRinput::InputNodalForces()
 				for (int dof = 0; dof < 3; dof++)
 					forceTmp.forceVals.Put(0, dof, fg.d[dof]);
 				forceTmp.coordId = -1;
-#if 1
-				OUTPRINTNORET("%d gcs ", node->userId);
-				for (int dof = 0; dof < 3; dof++)
-					OUTPRINTNORET(" %lg", fg.d[dof]);
-				OUTPRINTRET;
-#endif
 			}
 		}
 
-		SRnode* node = model.GetNode(nId);
 		int nnodalForce = currentNodeForceStore.d[nId].forces.GetNum();
 
 		//check for duplicate force, same node, could happen e.g. at a corner
@@ -850,7 +844,6 @@ void SRinput::InputNodalForces()
 		{
 			//new force
 			int forceid = currentForces.GetNum();
-			int nprev = currentNodeForceStore.d[nId].forces.GetNum();
 			currentNodeForceStore.d[nId].forces.PushBack(forceid);
 			force = currentForces.Add();
 			force->Copy(forceTmp);
@@ -1078,7 +1071,6 @@ void SRinput::InputFaceTractions()
 			continue;
 		if (line == "end")
 			break;
-		int forceId = model.forces.GetNum();
 		int eluid;
 		line.TokRead(eluid);
 		int elId = elemFind(eluid);
@@ -1307,9 +1299,7 @@ void SRinput::InputThermal()
 
 	SRstring tok, line;
 
-	SRASSERT(model.thermalForce == NULL);//duplicate thermal forces not allowed
 	model.thermalForce = ALLOCATEMEMORY SRthermalForce;
-	SRASSERT(model.thermalForce != NULL);
 	SRthermalForce* therm = model.thermalForce;
 	double temp;
 	model.inputFile.GetLine(line);
@@ -1356,9 +1346,8 @@ void SRinput::InputNodalConstraints()
 
 	SRstring tok, line;
 	SRconstraint* constraint;
-	int dof, id;
+	int dof;
 	int nodeuid;
-	double enfd;
 
 	SRconstraint conTmp;
 
@@ -1399,7 +1388,7 @@ void SRinput::InputNodalConstraints()
 		{
 			conTmp.constrainedDof[dof] = false;
 			tok = line.Token();
-			if (tok.len == 1 && tok == "-")
+			if (tok.getLength() == 1 && tok == "-")
 				continue;
 			conTmp.constrainedDof[dof] = true;
 			enfd = tok.RealRead();
@@ -1741,8 +1730,7 @@ void SRinput::readSettings()
 	if (!settingsOpened)
 		return;
 
-	SRmachDep::GetTime(line);
-	OUTPRINT("Stress Refine %s\n", line.str);
+	OUTPRINT("Stress Refine\n");
 	OUTPRINT("\nCustom Settings for this run:");
 	bool anyCustom = false;
 	userPSettings = false;
@@ -1754,8 +1742,7 @@ void SRinput::readSettings()
 	SRvec3 breakoutOrigin;
 	bool breakoutOriginAssigned = false;
 
-	SRmachDep::GetTime(line);
-	OUTPRINT("Stress Refine %s\n", line.str);
+	OUTPRINT("Stress Refine\n");
 	OUTPRINT("\nCustom Settings for this run:");
 
 	while (settingsOpened)
@@ -1766,7 +1753,7 @@ void SRinput::readSettings()
 				break;
 		}
 		lineWasRead = false;
-		if (line.isCommentOrBlank(SKIPCONTINATION))
+		if (line.isCommentOrBlank())
 			continue;
 		else if (line.CompareUseLength("parallel"))
 		{
@@ -1972,7 +1959,7 @@ void SRinput::readSettings()
 			OUTPRINT(" Output Ascii Nastran Stresses (.f06)");
 			anyCustom = true;
 		}
-		else if (line.CompareUseLength("saveBreakout"))
+		else if (line.CompareUseLength("savebreakout"))
 		{
 			SRstring lineSav;
 			lineSav = line;
@@ -1980,7 +1967,6 @@ void SRinput::readSettings()
 			SRBreakoutData *bdat = &model.saveBreakoutData;
 			bdat->atMax = false;
 			anyCustom = true;
-			bool breakoutReadError = false;
 			model.setMaxPorder(2);//don't run p-loop on the model being saved for breakout. It will be run on the breakout model
 			tok = line.Token(); //skip saveBreakout keyword
 			tok = line.Token();
@@ -1994,14 +1980,14 @@ void SRinput::readSettings()
 
 			//create a folder for the saved breakout by appending _breakout to the filename
 			char buf[20];
-			sprintf_s(buf, "_breakout");
+			SPRINTF(buf, "_breakout");
 			SRstring breakoutTail;
 			breakoutTail.Copy(model.fileNameTail);
 			breakoutTail.Cat(buf);
 			model.outdir.Left('\\', line);
 			line.Cat("\\");
 			line.Cat(breakoutTail);
-			SRmachDep::CreateDir(line.str);
+			SRmachDep::CreateDir(line.getStr());
 			//create .msh file for output in the new folder:
 			filename.Copy(line);
 			filename.Cat("\\");
@@ -2012,8 +1998,6 @@ void SRinput::readSettings()
 		}
 		else if (line.CompareUseLength("NoTopoFilter"))
 			model.post.noTopoFilter = true;
-		else if (line.CompareUseLength("ReadDispStressSRR"))
-			model.ReadDispStressSRR = true;
 		else if (line.CompareUseLength("ReadF06Results"))
 		{
 			tok = line.Token();
@@ -2022,7 +2006,7 @@ void SRinput::readSettings()
 		else if (line.CompareUseLength("partialDisplacements"))
 			model.saveBreakoutData.fromPartialDispFile = true;
 		else
-			OUTPRINT("unrecognized setting: %s", line.str);
+			OUTPRINT("unrecognized setting: %s", line.getStr());
 	}
 	if (!anyCustom)
 		OUTPRINT("   --None");

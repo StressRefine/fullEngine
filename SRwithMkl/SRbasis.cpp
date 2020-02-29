@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 #include "SRbasis.h"
 
@@ -177,7 +176,6 @@ void SRbasis::TriBubbleFuncs(double l1, double l2, double l3,int pmax, int &fun,
 	LegendrePns(pmax,r,Pr);
 	LegendrePns(pmax,s11,Ps);
 
-	int fun0 = fun;
 	for(i = 0; i <= n; i++)
 	{
 		for(j = 0; j <= n;j++)
@@ -278,9 +276,6 @@ int SRbasis::ElementBasisFuncs(double r, double s, double t, SRelement *elem, do
 	else if ((elem->type) == brick)
 		nfunc = BrickBasisFuncs(r, s, t, elem, basisvec, dbasisdr, dbasisds, dbasisdt, calltype);
 
-	int n = elem->GetNumFunctions();
-	SRASSERT(nfunc == n);
-
 	return nfunc;
 }
 
@@ -327,7 +322,6 @@ int SRbasis::TetBasisFuncs(double r, double s, double t, SRelement *elem, double
 	double dLIdr, dLIds, dLIdt, dLJdr, dLJds, dLJdt, dLKdr, dLKds, dLKdt, pipj;
 	double basisej[MAX1DFUNCTIONS], dbasisdrej[MAX1DFUNCTIONS];
 	double Pr[MAX1DFUNCTIONS], Ps[MAX1DFUNCTIONS], Pt[MAX1DFUNCTIONS], dpdr[MAX1DFUNCTIONS], dpds[MAX1DFUNCTIONS], dpdt[MAX1DFUNCTIONS];
-	double rm1, rp1;
 	int i, j, k, fun, pej, nodeI, nodeJ, nodeK, n, elpmax = 0, fun0;
 	SRedge* edge;
 	double N[10];

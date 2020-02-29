@@ -32,13 +32,15 @@ with an equivalent open-source solver
 
 #if !defined(SRSOLVER_INCLUDED)
 #define SRSOLVER_INCLUDED
-
+#ifndef NOSOLVER
 #include "SRmklUtil.h"
+#endif
 #include "SRutil.h"
 
 class SRFaceForceGroup;
 class SRforce;
 
+#ifndef NOSOLVER
 class SRpardiso
 {
 	friend class SRsolver;
@@ -106,6 +108,7 @@ private:
 	SRmklIntVector colIndexSimple;
 	bool bkpSimpleDiff;
 };
+#endif
 
 class SRsolver
 {
@@ -115,10 +118,14 @@ public:
 	SRsolver();
 	void Cleanup();
 	void DoSolution();
+#ifndef NOSOLVER
 	SRpardiso* parDisoPtr(){ return &parDisoSolver; };
+#endif
 
 private:
+#ifndef NOSOLVER
 	SRpardiso parDisoSolver;
+#endif
 };
 
 class SRskyline

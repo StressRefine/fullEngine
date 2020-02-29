@@ -32,9 +32,10 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
+#ifndef NOSOLVER
 #include "mkl.h"
+#endif
 
 extern SRmodel model;
 

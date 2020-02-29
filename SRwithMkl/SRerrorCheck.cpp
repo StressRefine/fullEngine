@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 #ifdef _DEBUG
@@ -175,9 +174,6 @@ double SRerrorCheck::FindSmoothedVsRawError(SRelement *elem)
 
 	double rawsvmmax = 0.0;
 	double rawstrain[6];
-	double filterFOS = 1.5;
-	if (model.breakoutAtNode)
-		filterFOS = 1.1;
 	for (i = 0; i < nint; i++)
 	{
 		model.math.GetGP3d(i,r,s,t,w);
@@ -242,11 +238,7 @@ void SRerrorCheck::SetUp(bool finalAdapt)
 		elem->DownloadDisplacement();
 	}
 
-	double sInitial, sElapsed;
-	sInitial = dsecnd();
-
 	strainMax = model.post.GlobalStrainSmooth();
-	sElapsed = dsecnd() - sInitial;
 
 	model.post.CalculateMaxStress();
 
@@ -314,10 +306,6 @@ bool SRerrorCheck::AutoSacrificialElements()
 	singEdge.Allocate(model.GetNumEdges());
 	bool anySingNode = false;
 	bool anySingEdge = false;
-
-	bool checkOKStresses = true;
-	if (model.feasvmmax < TINY)
-		checkOKStresses = false;
 
 	int i, id, n;
 	for (i = 0; i < model.GetNumNodes(); i++)
@@ -425,12 +413,9 @@ bool SRerrorCheck::AutoSacrificialElements()
 
 	SRface* face2;
 	double dotmin = 1.0;
-	bool AnyExoneratedByLowStressJump = false;
 
 	for (i = 0; i < nej; i++)
 	{
-		SRedge* edge = model.GetEdge(i);
-
 		int f1 = edgeface1.Get(i);
 		int f2 = edgeface2.Get(i);
 		if (f1 == -1 || f2 == -1)
@@ -536,7 +521,6 @@ bool SRerrorCheck::AutoSacrificialElements()
 			if (okStressVsNeighbors(face) && okStressVsNeighbors(face2))
 			{
 				exoneratedByLowStressJump = true;
-				AnyExoneratedByLowStressJump = true;
 			}
 			if (!exoneratedByLowStressJump)
 			{
@@ -573,11 +557,6 @@ bool SRerrorCheck::AutoSacrificialElements()
 					if (normdot < dotmin)
 					{
 						dotmin = normdot;
-						SRelement* elem;
-						int eid = face->GetElementOwner(0);
-						elem = model.GetElement(eid);
-						eid = face2->GetElementOwner(0);
-						elem = model.GetElement(eid);
 					}
 					if (normdot < -0.1)
 					{
@@ -887,8 +866,6 @@ double SRerrorCheck::fillFaceTractionJumps()
     return eTMax;
 }
 
-static bool badfaceToElMapWarned = false;
-
 double SRerrorCheck::getElementFaceTraction(int lface, SRface *face, SRelement* elem, double rf, double sf, double& r, double& s, double& t, double* tract)
 {
 	//calculate traction at a face at natural coordinates rf, sf
@@ -927,7 +904,7 @@ double SRerrorCheck::getElementFaceTraction(int lface, SRface *face, SRelement* 
 	}
 #endif
 
-	double detj = elem->FillMapping(r, s, t);
+	elem->FillMapping(r, s, t);
 	elem->FillBasisFuncs(r, s, t, derivonly);
 	eT = elem->CalculateRawStrain(r, s, t, strain, etx, ety, etz);
 	elem->StraintoStress(r, s, t, strain, stress);

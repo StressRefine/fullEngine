@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 extern SRmodel model;
@@ -184,10 +183,9 @@ int SRfaceUtil::GlobalFaceMatch(int &gn1, int &gn2, int &gn3, int &gn4, int n1, 
 		//face id
 
 	gn4 = -1;
-	int face, g1, g2, g3, g4 = -1;
+	int g1, g2, g3, g4 = -1;
 	int nn1face = model.input.GetNumNodeFaces(n1);
 	int f = -1;
-	int f1 = -1, face2;
 	if (nn1face == -1)
 	{
 		//global node n1 overflowed its nodeFaces array, need to search all model faces:
@@ -425,12 +423,11 @@ void SRface::ProcessForce(SRforce* force, SRvec3& ResF)
 	//note:
 		//adds to global force vector currently stored in model.solution
 	double rf, sf, w, detj, bw, forceVal[3];
-	int i, n, dof, nint, gp, eq, gfun;
+	int i, dof, nint, gp, eq, gfun;
 	double* globalForce = model.GetSolutionVector();
 	SRdoubleVector bv;
 	bv.Allocate(GetNumGlobalFunctions());
 	double* basis = bv.GetVector();
-	n = globalFunctionNumbers.GetNum();
 	SRvec3 tmpRes, p;
 	nint = model.math.FillGaussPoints(this);
 	for (gp = 0; gp < nint; gp++)
@@ -710,7 +707,6 @@ void SRface::NaturalCoordinatesNearMidedge(int lej, double& r, double& s)
 	naturalCoordinatesFromEdge(lej, 0.0, re, se);
 	SRvec3 ejnorm;
 	model.map.FaceEdgeNaturalNormal(this, lej, ejnorm);
-	double eps = 0.01;
 	r = re - 0.01*ejnorm.d[0]; //this is a point near center of edge, slightly inward
 	s = se - 0.01*ejnorm.d[1]; //this is a point near center of edge, slightly inward
 }
@@ -1144,9 +1140,7 @@ void SRface::QuadLinearShapeDerivs(double rf, double sf)
 	//fills up class variables dNdrf, dNdsf
 
 	int i;
-	double r0, s0, r2, s2, ri, si;
-	r2 = rf*rf;
-	s2 = sf*sf;
+	double r0, s0, ri, si;
 	//corners:
 	for (i = 0; i < 4; i++)
 	{

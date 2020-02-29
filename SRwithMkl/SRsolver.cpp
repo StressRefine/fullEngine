@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
@@ -57,16 +56,19 @@ SRsolver::SRsolver()
 
 void SRsolver::Cleanup()
 {
+#ifndef NOSOLVER
 	parDisoSolver.clear();
+#endif
 }
 
 void SRsolver::DoSolution()
 {
-	int neq = model.GetNumEquations();
+#ifndef NOSOLVER
 	LOGPRINT("Solution Setup: bookkeep, assemble, preanalyze stiffness matrix\n");
 	parDisoSolver.bookkeep();
 	parDisoSolver.assemble();
 	parDisoSolver.solve();
+#endif
 }
 
 

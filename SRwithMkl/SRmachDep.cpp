@@ -1,30 +1,20 @@
 /*
 Copyright (c) 2020 Richard King
 
-The stressRefine analysis executable "SRwithMkl" is free software: you can redistribute it and/or modify
+The stressRefine analysis executable "SRwithMkl" is free software:
+you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-"SRwithMkl" is distributed in the hope that it will be useful,
+SRwithMkl is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 The terms of the GNU General Public License are explained in the file COPYING.txt,
 also available at <https://www.gnu.org/licenses/>
-
-Note that "SRwithMkl" makes use of the pardiso sparse solver
-in the Intel MKL library, with which it must be linked.
-Copyright (c) 2018 Intel Corporation.
-You may use and redistribute the Intel MKL library, without modification, provided the conditions of
-the Intel Simplified Software license are met:
-https://software.intel.com/en-us/license/intel-simplified-software-license
-
-It is perfectly permissable to replace the use of the pardiso software from the MKL library
-with an equivalent open-source solver
 */
-
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -33,26 +23,119 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
-#include <direct.h>
-#include <time.h>
-#include "SRString.h"
+#include "SRstring.h"
 #include "SRmodel.h"
-#include <windows.h>
-#ifdef _WINDOWS
-#endif
 
 #ifdef _DEBUG
 #undef THIS_FILE
 static char THIS_FILE[]=__FILE__;
 #endif
 
-static char buf[256];
+void SRmachDep::Delay(int msec)
+{
+#ifdef linux
+	usleep(msec * 1000); // takes microseconds
+#else
+	Sleep(msec);
+#endif
 
-bool SRmachDep::CreateDir(char *name)
+
+}
+
+void SRmachDep::fileOpen(FILE*& fptr, const char* name, const char* mode)
+{
+#ifdef linux
+	fptr = fopen(name, mode);
+#else
+	fopen_s(&fptr, name, mode);
+#endif
+}
+
+void SRmachDep::stringCopy(char* dest, int destLen, const char* src)
+{
+#ifdef linux
+	strcpy(dest, src);
+#else
+	strcpy_s(dest, destLen, src);
+#endif
+}
+
+void SRmachDep::stringNCopy(char* dest, int destLen, const char* src, int n)
+{
+#ifdef linux
+	strncpy(dest, src, n);
+    //make sure dest is null-terminated:
+	dest[n] = '\0';
+#else
+	strncpy_s(dest, destLen, src, n);
+#endif
+}
+
+void SRmachDep::stringCat(char* dest, int destLen, const char* src)
+{
+#ifdef linux
+	strcat(dest, src);
+#else
+	strcat_s(dest, destLen, src);
+#endif
+}
+
+void SRmachDep::stringNCat(char* dest, int destLen, const char* src, int n)
+{
+#ifdef linux
+	strncat(dest, src, n);
+#else
+	strncat_s(dest, destLen, src, n);
+#endif
+}
+
+char* SRmachDep::stringToken(char* str, char* sep, char** nextToken)
+{
+#ifdef linux
+	return strtok(str, sep);
+#else
+	return strtok_s(str, sep, nextToken);
+#endif
+}
+
+int SRmachDep::stringCmp(const char* str,const char* str2)
+{
+	return strcmp(str, str2);
+}
+
+int SRmachDep::stringICmp(const char* str,const char* str2)
+{
+#ifdef linux
+	return strcasecmp(str, str2);
+#else
+	return _stricmp(str, str2);
+#endif
+}
+
+int SRmachDep::stringNCmp(const char* str,const char* str2, int n)
+{
+	return strncmp(str, str2, n);
+}
+
+int SRmachDep::stringNICmp(const char* str,const char* str2,int n)
+{
+#ifdef linux
+	return strncasecmp(str, str2,n);
+#else
+	return _strnicmp(str, str2,n);
+#endif
+}
+
+bool SRmachDep::CreateDir(const char* name)
 {
 	//create a directory with full path "name"
-	int i = _mkdir(name);
+	int i;
+#ifdef linux
+	i = mkdir(name, 0777);
+#else
+	i = _mkdir(name);
+#endif
+
 	if (i == 0)
 		return true;
 	else
@@ -60,48 +143,7 @@ bool SRmachDep::CreateDir(char *name)
 	return false;
 }
 
-void SRmachDep::GetTime(SRstring &t, bool timeOnly)
-{
-	//return date and time in a string
-	//note: this should be portable- time and ctime are standard c functions
-	//put it in ifdef if problems on other platforms
 
-	//example:
-	//Fri Apr 29 12:25:12 2001
 
-	time_t ltime;
-	time( &ltime );
-	char buf[256];
-	ctime_s(buf, 256, &ltime);
-	t = buf;
-	if (!timeOnly)
-	{
-		//strip trailing \n:
-		int len = t.len;
-		t.str[len - 1] = '\0';
-	}
-	else
-	{
-		SRstring line;
-		line.Copy(t);
-		line.Token(); //skip day of week;
-		line.Token(); //skip month;
-		line.Token(); //skip day;
-		t = line.Token();
-	}
-}
 
-double SRmachDep::availMemCheck()
-{
-	//look up the available memory on this machine
-	//leave a little mem for other processes so don't mess up machine
-
-	MEMORYSTATUSEX statex;
-	statex.dwLength = sizeof (statex);
-	GlobalMemoryStatusEx(&statex);
-	double bytes = (double) statex.ullAvailPhys;
-	bytes *= 0.8;//leave a little mem for other processes so don't mess up machine
-	double kb = bytes*1000.0;
-	return kb;
-}
 

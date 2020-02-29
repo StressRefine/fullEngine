@@ -32,9 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-
-
-#include "stdafx.h"
 #include <stdlib.h>
 #include <search.h>
 #include "SRmodel.h"
@@ -143,7 +140,7 @@ void SRinput::InputBreakoutSacrElems()
 	{
 		if (!model.inputFile.GetLine(line))
 			break;
-		if (line.isCommentOrBlank(SKIPCONTINATION))
+		if (line.isCommentOrBlank())
 			continue;
 		if (line == "end")
 			break;
@@ -166,7 +163,7 @@ void SRinput::CountEntities(int &num)
 	{
 		if(!model.inputFile.GetLine(line))
 			break;
-		if (line.isCommentOrBlank(SKIPCONTINATION))
+		if (line.isCommentOrBlank())
             continue;
 		if(line=="end")
 			break;
@@ -200,7 +197,7 @@ void SRinput::CountElements(int &num)
 			if (nt == 4 || nt == 6 || nt == 8)
 				ERROREXIT; //linear mesh not allowed
 		}
-		if (line.isCommentOrBlank(SKIPCONTINATION))
+		if (line.isCommentOrBlank())
 			continue;
 		if (line == "end")
 			break;
@@ -237,7 +234,6 @@ int SRinput::GetCoordId(SRstring &name)
 		if (name == coord->name)
 			return i;
 	}
-	SRASSERT(false);
 	return -1;
 }
 void SRinput::SortNodes()
@@ -277,7 +273,6 @@ int SRinput::nodalToFaceConstraints(bool countOnly)
 		int nn = face->GetNumNodes();
 
 		bool allNodesConstrained = true;
-		bool anyNodeConstrained = false;
 		for (int n = 0; n < nn; n++)
 		{
 			int nid = face->GetNodeId(n);
@@ -494,8 +489,6 @@ int SRinput::nodalToFaceForces(bool countOnly)
 	for (int f = 0; f < nface; f++)
 	{
 		SRface* face = model.GetFace(f);
-		for (int i = 0; i < face->GetNumLocalEdges(); i++)
-			int mid = face->localEdges.Get(i).GetEdge()->GetMidNodeId();
 		if (face->GetElementOwner(1) != -1) //not boundary face
 			continue;
 
@@ -544,12 +537,9 @@ int SRinput::nodalToFaceForces(bool countOnly)
 			SRforce* nodeForce0 = nodeForceStore.Get(nid0).GetForce(iforce0);
 			int coord0 = nodeForce0->coordId;
 			bool pressure0 = nodeForce0->isPressure();
-			double fv0[3];
 			int ndof = 3;
 			if (pressure0)
 				ndof = 1;
-			for (int dof = 0; dof < ndof; dof++)
-				fv0[dof] = nodeForce0->forceVals.Get(0, dof);
 
 			SRforce* nodeForce;
 
@@ -721,7 +711,7 @@ void SRinput::echoConstraints()
 			typestr.Copy("Nodal");
 		else if (con->GetType() == faceCon)
 			typestr.Copy("Face");
-		OUTPRINT("%d type, eid, coordid: %s %d %d\n", i, typestr.str, eid, con->GetCoordId());
+		OUTPRINT("%d type, eid, coordid: %s %d %d\n", i, typestr.getStr(), eid, con->GetCoordId());
 		if (con->GetType() == faceCon)
 		{
 			SRface* face = model.GetFace(eid);
@@ -789,7 +779,6 @@ void SRinput::breakoutMeshPlot()
 {
 
 	// plot mesh to breakout frd
-	int nnode = model.GetNumNodes();
 	SRstring cgxSave;
 	cgxSave.Copy(model.cgxFrdFile.filename);
 	SRstring line;
@@ -811,7 +800,6 @@ void SRinput::MeshOnlyFrdPlot()
 {
 
 	//for debugging, plot mesh to frd file right after input
-	int nnode = model.GetNumNodes();
 
 	if (!model.cgxFrdFile.OutOpenNoFail())
 	{
@@ -838,7 +826,7 @@ SRforce* SRnodeForceInputStore::GetForce(int i)
 	return model.GetForce(id);
 }
 
-void SRinput::GetBinaryFileName(char *ext, SRstring &name)
+void SRinput::GetBinaryFileName(const char *ext, SRstring &name)
 {
 	//get the binary file name, full path, corresponding to a file name and extension
 	//input:
@@ -848,7 +836,7 @@ void SRinput::GetBinaryFileName(char *ext, SRstring &name)
 	//creates working directory ".tmp" if does not already exist
 	name = model.wkdir;
 	name += "tmp";
-	SRfile::CreateDir(name.str);
+	SRmachDep::CreateDir(name.getStr());
 	name += "\\";
 	name += ext;
 	name += ".bin";
@@ -897,8 +885,8 @@ int SRinput::GetBreakoutmatId(SRstring& saveBreakoutMat)
 	}
 	if (matid == -1)
 	{
-		OUTPRINT("Error- saveBreakout by material. material with name %s not found", saveBreakoutMat.str);
-		LOGPRINT("Error- saveBreakout by material. material with name %s not found", saveBreakoutMat.str);
+		OUTPRINT("Error- saveBreakout by material. material with name %s not found", saveBreakoutMat.getStr());
+		LOGPRINT("Error- saveBreakout by material. material with name %s not found", saveBreakoutMat.getStr());
 		ERROREXIT;
 	}
 
@@ -942,7 +930,6 @@ void SRinput::applyNodalBreakoutCons()
 	}
 
 	//for any edges with breakout cons on both nodes, need one on midnode also if not already there:
-	int nmidbreakout = 0;
 	int ncon0 = model.GetNumConstraints();
 	int nedge = model.GetNumEdges();
 	model.constraints.Allocate(ncon0 + nedge);
@@ -954,7 +941,6 @@ void SRinput::applyNodalBreakoutCons()
 		enfd.Zero();
 		bool bothnodesbreakout = true;
 		SRnode* node;
-		int nuids[2];
 		for (int n = 0; n < 2; n++)
 		{
 			node = edge->GetNode(n);
@@ -963,7 +949,6 @@ void SRinput::applyNodalBreakoutCons()
 				bothnodesbreakout = false;
 				break;
 			}
-			nuids[n] = node->userId;
 		}
 		if (bothnodesbreakout)
 		{
@@ -991,7 +976,6 @@ void SRinput::applyNodalBreakoutCons()
 		if (con->type == nodalCon && con->breakout)
 		{
 			int nid = con->entityId;
-			SRnode* node = model.GetNode(nid);
 			if (nodeNeedsMidNodeCon.Get(nid) == 1)
 			{
 				con->allocateEnforcedDisplacementData(1);
@@ -1073,7 +1057,6 @@ void SRinput::InputnodalBreakoutConstraints(int nbr)
 	int ncon = model.GetNumConstraints();
 	ncon += nbr;
 	model.constraints.Allocate(ncon);
-	SRconstraint* con;
 	//input nodal constraints
 
 	//input:
@@ -1253,7 +1236,7 @@ void SRinput::PlotFaceForceGroups(int ffnum)
 	name.Copy(model.outdir);
 	name.Cat("\\faceForceGroup");
 	char buf[20];
-	sprintf_s(buf, "%d", ffnum);
+	SPRINTF(buf, "%d", ffnum);
 	name.Cat(buf);
 	name.Cat(".frd");
 	SRfile frdf;
@@ -1373,7 +1356,7 @@ void SRinput::PlotFaceForceGroups(int ffnum)
 void SRinput::EnergySmoothNodalForces()
 {
 	//convert to smooth tractions, energy approach
-
+#ifndef NOSOLVER
 	if (!model.doEnergySmooth)
 		return;
 
@@ -1385,7 +1368,6 @@ void SRinput::EnergySmoothNodalForces()
 		EnergySmoothNodalForcesSymFull();
 		return;
 	}
-
 
 	for (int g = 0; g < nfg; g++)
 	{
@@ -1500,10 +1482,11 @@ void SRinput::EnergySmoothNodalForces()
 					double ft = faf->forceVals.Get(n, dof);
 					OUTPRINTNORET(" %lg", ft);
 				}
-				OUTPRINTRET;
+				OUTPRINT("\n");
 			}
 		}
 	}
+#endif
 }
 
 void SRinput::PlotUnsupportedFaces()
@@ -1743,7 +1726,7 @@ void SRinput::EnergySmoothNodalForcesSymFull()
 					double ft = faf->forceVals.Get(n, dof);
 					OUTPRINTNORET(" %lg", ft);
 				}
-				OUTPRINTRET;
+				OUTPRINT("\n");
 			}
 		}
 	}

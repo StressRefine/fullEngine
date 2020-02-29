@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 extern SRmodel model;
@@ -41,7 +40,7 @@ extern SRmodel model;
 SRBTC::SRBTC()
 {
 	BTC11 = BTC12 = BTC13 = BTC14 = BTC15 = BTC16 = 0.0;
-	BTC21 = BTC22 = BTC24 = BTC24 = BTC25 =  BTC26 = 0.0;
+	BTC21 = BTC22 = BTC23 = BTC24 = BTC25 =  BTC26 = 0.0;
 	BTC21 = BTC32 = BTC33 = BTC34 = BTC35 = BTC36 = 0.0;
 }
 
@@ -330,11 +329,9 @@ bool SRelement::DetectThinEdges()
 			if (len > tMax)
 				tMax = len;
 		}
-		bool thin = false;
 		if (tMax < thinTol*inplaneMin && tejStraight)
 		{
 			//thin direction is t. make sure t edges are normal to their faces
-			int edgeCorner0[3] = { 0, 1, 2 };
 			//element local face corresponding to node 0 of the r edges is 0-1-2 = 0
 			SRface* face = GetFace(0);
 			bool allNormal = true;
@@ -534,9 +531,8 @@ double* SRelement::CalculateStiffnessMatrix(int processorNum, int& len)
 
 	int i, neq;
 	int nfun = globalFunctionNumbers.GetNum();
-	int nint, gp, coleq0;
+	int nint, gp;
 	SRBTC btc;
-	SRmap* map = &model.map;
 	double w, dbdx, dbdy, dbdz;
 	nint = model.math.FillGaussPoints(this);
 
@@ -654,7 +650,7 @@ void SRelement::AddPenaltyToStiffnessandEnfDisp(double *stiff)
 	SRface *face;
 	SRconstraint *con;
 	double rf, sf, w, bi, bj, enfdisp, detj, bibj, bibjelB;
-	int i, nint, nfun, symloc, nfun2;
+	int i, nint, nfun, symloc;
 	double *basisv = basisVec;
 	SRvec3 elocal;
 	double elA, elB;
@@ -1006,7 +1002,6 @@ double SRelement::CalculateRawStrain(double r, double s, double t, double strain
 		//maximum thermal strain
 	//Note: if thermal loading is present, strain is total strain
 	int fun, nfun, eq;
-	SRmap* map = &model.map;
 	double dbdx, dbdy, dbdz, dbdr, dbds, dbdt, uel, vel, wel, ex, ey, ez, gamxy, gamxz, gamyz;
 
 	nfun = globalFunctionNumbers.GetNum();
@@ -1051,7 +1046,6 @@ double SRelement::CalculateRawStrain(double r, double s, double t, double strain
 	{
 		double deltaTemp, etx, ety, etz;
 		deltaTemp = tf->GetTemp(this, r, s, t) - elMat->tref;
-		double alfx, alfy, alfz;
 		etx = deltaTemp*elMat->alphax;
 		ety = deltaTemp*elMat->alphay;
 		etz = deltaTemp*elMat->alphaz;
@@ -1101,7 +1095,6 @@ int SRelement::MapFaceToElFuns(int lface, int FaceToElFuns[])
 	for (lfaceej = 0; lfaceej < face->GetNumLocalEdges(); lfaceej++)
 	{
 		gf = face->GetLocalEdgeGlobalId(lfaceej);
-		int nf = face->GetLocalEdgePOrder(lfaceej) + 1;
 		elfun = elfun0;
 		for (lej = 0; lej < localEdges.GetNum(); lej++)
 		{
@@ -1161,7 +1154,6 @@ int SRelement::MapFaceToElFuns(int lface, int FaceToElFuns[])
 	}
 
 	n = model.basis.CountFaceTotalFunctions(face, i);
-	SRASSERT(n == facefun);
 
 	return facefun;
 }
@@ -1882,8 +1874,6 @@ void SRelement::colFunLoopGenAniso(double* dbdxv, double* dbdyv, double* dbdzv, 
 	double dbdzi = dbdzv[rowfun];
 	FillBTC(w, dbdxi, dbdyi, dbdzi, btc);
 	int nfun = GetNumFunctions();
-	int colfun;
-	int rowcolloc;
 	for (int colfun = rowfun; colfun < nfun; colfun++)
 	{
 		double dbdxj = dbdxv[colfun];
@@ -2114,7 +2104,6 @@ SRvec3 SRelement::GetDisp(double r, double s, double t)
 		
 	SRElementData *eldata = model.GetElementData(0);
 	basisVec = eldata->GetBasisVec();
-	double *dispElVec = dispEl.GetVector();
 	int nfun = globalFunctionNumbers.GetNum();
 	FillBasisFuncs(r, s, t, basisonly);
 	SRvec3 disp;

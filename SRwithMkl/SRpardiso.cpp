@@ -32,13 +32,15 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef linux
 #include <omp.h>
+#endif
 #include "SRmodel.h"
 #include "SRinput.h"
-
+#ifndef NOSOLVER
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -50,8 +52,6 @@ extern SRmodel model;
 #ifdef _DEBUG
 static bool solverecho = true;
 #endif
-
-#define MAXINT32 2E9
 
 #define BKPDIFF false
 
@@ -74,7 +74,6 @@ void SRpardiso::bookkeep()
 	}
 	int ndof = 3;
 	nzTotal = 0;
-	int nfunelmax = model.GetmaxNumElementFunctions();
 	int nel = model.GetNumElements();
 	AllElEquationNumbers.Allocate(nel);//global equation numbers for each local equation in element, includes "-1" for constrained dofs
 	AllElSortedFunNumbers.Allocate(nel); //global function numbers for each local function in element
@@ -83,8 +82,6 @@ void SRpardiso::bookkeep()
 	int ngfun = model.GetNumFunctions();
 	rowNumels.Allocate(ngfun);
 	rowEls.Allocate(ngfun);
-
-	int rowfun, roweq;
 
 	//first pass through elements: count number of elements that own each equation (rowNumels),
 	// and fill up ElEquationNumbers and ElSortedNumbers
@@ -192,7 +189,6 @@ bool SRpardiso::fillColind(int neq, int ngfun)
 	if (needInt64)
 		return false;
 	int numThreads = model.GetMaxNumThreads();
-	SRmklIntVector* oneRowEls;
 	rowColinds.Allocate(neq);
 	rowNZ.Allocate(neq);
 	colIndexNonZeroforOneRowParallel.Allocate(numThreads);
@@ -203,8 +199,6 @@ bool SRpardiso::fillColind(int neq, int ngfun)
 	}
 	nzStore.Allocate(numThreads * ngfun);
 
-	double sInit = dsecnd();
-
 	if (numThreads == 1)
 	{
 		for (int rowfun = 0; rowfun < ngfun; rowfun++)
@@ -212,6 +206,7 @@ bool SRpardiso::fillColind(int neq, int ngfun)
 	}
 	else
 	{
+#ifndef linux
 #pragma omp parallel
 		{
 #pragma omp for nowait
@@ -221,12 +216,10 @@ bool SRpardiso::fillColind(int neq, int ngfun)
 				fillRowNZByFun(rowfun, ngfun, pnum);
 			}
 		}
+#endif
 	}
 
 	nzStore.Free();
-	double sElapsed = (dsecnd() - sInit);
-	//OUTPRINT("fillrownz elapsed: %lg\n", sElapsed);
-	model.bkpSecs += sElapsed;
 
 	for (int i = 0; i < numThreads; i++)
 	{
@@ -277,7 +270,6 @@ bool SRpardiso::fillColind(int neq, int ngfun)
 void SRpardiso::fillColind64(int neq, int ngfun)
 {
 	int numThreads = model.GetMaxNumThreads();
-	SRmklIntVector* oneRowEls;
 	rowColinds64.Allocate(neq);
 	rowNZ.Allocate(neq);
 	colIndexNonZeroforOneRowParallel64.Allocate(numThreads);
@@ -288,8 +280,6 @@ void SRpardiso::fillColind64(int neq, int ngfun)
 	}
 	nzStore.Allocate(numThreads * ngfun);
 
-	double sInit = dsecnd();
-
 	if (numThreads == 1)
 	{
 		for (MKL_INT64 rowfun = 0; rowfun < ngfun; rowfun++)
@@ -297,6 +287,7 @@ void SRpardiso::fillColind64(int neq, int ngfun)
 	}
 	else
 	{
+#ifndef linux
 #pragma omp parallel
 		{
 #pragma omp for nowait
@@ -306,12 +297,10 @@ void SRpardiso::fillColind64(int neq, int ngfun)
 				fillRowNZByFun64(rowfun, ngfun, pnum);
 			}
 		}
+#endif
 	}
 
 	nzStore.Free();
-	double sElapsed = (dsecnd() - sInit);
-	//OUTPRINT("fillrownz64 elapsed: %lg\n", sElapsed);
-	model.bkpSecs += sElapsed;
 
 	for (MKL_INT64 i = 0; i < numThreads; i++)
 	{
@@ -365,8 +354,6 @@ void SRpardiso::smoothBookkeep()
 	int neq = model.GetNumSmoothEquations();
 	rowNumels.Allocate(neq);
 	rowEls.Allocate(neq);
-
-	int rowfun, roweq;
 
 	//first pass through elements: count number of elements that own each equation (rowNumels),
 	// and fill up ElEquationNumbers and ElSortedNumbers
@@ -446,7 +433,6 @@ void SRpardiso::smoothBookkeep()
 void SRpardiso::smoothfillColind(int neq)
 {
 	int numThreads = model.GetMaxNumThreads();
-	SRmklIntVector* oneRowEls;
 	rowColinds.Allocate(neq);
 	rowNZ.Allocate(neq);
 	colIndexNonZeroforOneRowParallel.Allocate(numThreads);
@@ -457,7 +443,6 @@ void SRpardiso::smoothfillColind(int neq)
 	}
 	nzStore.Allocate(numThreads * neq);
 
-	double sInit = dsecnd();
 	if (numThreads == 1)
 	{
 		for (int row = 0; row < neq; row++)
@@ -468,6 +453,7 @@ void SRpardiso::smoothfillColind(int neq)
 	}
 	else
 	{
+#ifndef linux
 #pragma omp parallel
 		{
 #pragma omp for nowait
@@ -478,12 +464,10 @@ void SRpardiso::smoothfillColind(int neq)
 				fillRowNZForSmoothing(row, neq, colindr, pnum);
 			}
 		}
+#endif
 	}
 
 	nzStore.Free();
-	double sElapsed = (dsecnd() - sInit);
-	//OUTPRINT("fillrownz elapsed: %lg\n", sElapsed);
-	model.bkpSecs += sElapsed;
 
 	for (int i = 0; i < numThreads; i++)
 	{
@@ -524,7 +508,6 @@ void SRpardiso::smoothfillColind(int neq)
 void SRpardiso::smoothfillColind64(int neq)
 {
 	int numThreads = model.GetMaxNumThreads();
-	SRmklIntVector* oneRowEls;
 	rowColinds64.Allocate(neq);
 	rowNZ.Allocate(neq);
 	colIndexNonZeroforOneRowParallel64.Allocate(numThreads);
@@ -535,7 +518,6 @@ void SRpardiso::smoothfillColind64(int neq)
 	}
 	nzStore.Allocate(numThreads * neq);
 
-	double sInit = dsecnd();
 	if (numThreads == 1)
 	{
 		for (MKL_INT64 row = 0; row < neq; row++)
@@ -546,6 +528,7 @@ void SRpardiso::smoothfillColind64(int neq)
 	}
 	else
 	{
+#ifndef linux
 #pragma omp parallel
 		{
 #pragma omp for nowait
@@ -556,12 +539,10 @@ void SRpardiso::smoothfillColind64(int neq)
 				fillRowNZ64ForSmoothing(row, neq, colindr, pnum);
 			}
 		}
+#endif
 	}
 
 	nzStore.Free();
-	double sElapsed = (dsecnd() - sInit);
-	//OUTPRINT("fillrownz elapsed: %lg\n", sElapsed);
-	model.bkpSecs += sElapsed;
 
 	for (MKL_INT64 i = 0; i < numThreads; i++)
 	{
@@ -628,7 +609,6 @@ void SRpardiso::fillRowNZByFun(int rowfun, int ngfun, int pnum)
 	int *colindOneData = colind1->d;
 	int nz = 0;
 	SRmklIntVector* oneRowEls = rowEls.GetPointer(rowfun);
-	int*oneRowelData = oneRowEls->d;
 	int* nzstoreData = nzStore.d + pnum*ngfun;
 	int roweq;
 	int colfun;
@@ -636,7 +616,6 @@ void SRpardiso::fillRowNZByFun(int rowfun, int ngfun, int pnum)
 	for (int et = 0; et < nel; et++)
 	{
 		int e = oneRowEls->Get(et);
-		SRelement* elem = model.GetElement(e);
 		SRmklIntVector* elsortedFunNumbers = AllElSortedFunNumbers.GetPointer(e);
 		int elnfun = elsortedFunNumbers->GetNum();
 		int elrowfun = elsortedFunNumbers->Find(rowfun);
@@ -655,7 +634,6 @@ void SRpardiso::fillRowNZByFun(int rowfun, int ngfun, int pnum)
 	}
 
 	bool uncon = model.GetFunUncon(rowfun);
-	SRmklIntVector* colindr;
 	int nz3 = nz * 3;
 	int rowdof;
 	int coleq;
@@ -762,7 +740,6 @@ void SRpardiso::fillRowNZForSmoothing(int row, int neq, SRmklIntVector* colindr,
 	for (int et = 0; et < rowNumels.d[row]; et++)
 	{
 		int e = oneRowEls->Get(et);
-		SRelement* elem = model.GetElement(e);
 		SRmklIntVector* ElSortedNumbers = AllElSortedFunNumbers.GetPointer(e);
 		int elnz = ElSortedNumbers->GetNum();
 		int elroweq = ElSortedNumbers->Find(row);
@@ -809,7 +786,6 @@ void SRpardiso::fillRowNZByFun64(MKL_INT64 rowfun, MKL_INT64 ngfun, int pnum)
 	MKL_INT64* colindOneData = colind1->d;
 	MKL_INT64 nz = 0;
 	SRmklIntVector* oneRowEls = rowEls.GetPointer(rowfun);
-	int* oneRowelData = oneRowEls->d;
 	int* nzstoreData = nzStore.d + pnum*ngfun;
 	int roweq;
 	int colfun;
@@ -817,7 +793,6 @@ void SRpardiso::fillRowNZByFun64(MKL_INT64 rowfun, MKL_INT64 ngfun, int pnum)
 	for (MKL_INT64 et = 0; et < nel; et++)
 	{
 		MKL_INT64 e = oneRowEls->Get(et);
-		SRelement* elem = model.GetElement(e);
 		SRmklIntVector* elsortedFunNumbers = AllElSortedFunNumbers.GetPointer(e);
 		MKL_INT64 elnfun = elsortedFunNumbers->GetNum();
 		MKL_INT64 elrowfun = elsortedFunNumbers->Find(rowfun);
@@ -944,7 +919,6 @@ void SRpardiso::fillRowNZ64ForSmoothing(MKL_INT64 row, MKL_INT64 neq, SRmklIntVe
 	for (MKL_INT64 et = 0; et < rowNumels.d[row]; et++)
 	{
 		MKL_INT64 e = oneRowEls->Get(et);
-		SRelement* elem = model.GetElement(e);
 		SRmklIntVector* ElSortedNumbers = AllElSortedFunNumbers.GetPointer(e);
 		MKL_INT64 elnz = ElSortedNumbers->GetNum();
 		MKL_INT64 elroweq = ElSortedNumbers->Find(row);
@@ -1138,7 +1112,6 @@ void SRpardiso::solve(bool smoothing)
 	MKL_INT solvphase;
 	MKL_INT nrhs = 1;
 
-	double sInit = dsecnd();
 	iparm[0] = 0;
 	MKL_INT msglvl = 0;//message level, 0 for no stats, 1 for stats to screen;
 	MKL_INT error = 0;
@@ -1150,22 +1123,11 @@ void SRpardiso::solve(bool smoothing)
 
 	solvphase = 11; //analyze the matrix;
 	pardiso(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	int memNeeded = iparm[14]; //see mkl documentation
-	int mem2 = iparm[15] + iparm[16];
-	if (mem2 > memNeeded)
-		memNeeded = mem2;
-
-	double MbytesNeeded = ((double)memNeeded) / 1024.0;
-
-	if (!smoothing)
-		OUTPRINT("Memory needed for equation solving (Mbytes): %lg\n", MbytesNeeded);
-
-	double availmem = SRmachDep::availMemCheck();
+	if (error == -2)
+		oocNeeded = true;
 
 	LOGPRINT("Pardiso sparse equation solving ");
 
-	if (memNeeded > availmem)
-		oocNeeded = true;
 
 	if (oocNeeded)
 	{
@@ -1177,16 +1139,14 @@ void SRpardiso::solve(bool smoothing)
 		pardiso(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
 	}
 
+	if (error != 0)
+	{
+		LOGPRINT("pardiso matrix analysis phase. error = %d", error);
+		ERROREXIT;
+	}
+	
 	solvphase = 22; //factor the matrix;
 	pardiso(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	if (error == -2 && !oocNeeded)
-	{
-		//try again with ooc on. redo analysis and factor in one pass with solvphase 12
-		oocNeeded = true;
-		iparm[59] = 2;//flag for ooc
-		solvphase = 12; //analysize and factor the matrix;
-		pardiso(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	}
 	if (error != 0)
 	{
 		LOGPRINT("pardiso factor phase. error = %d", error);
@@ -1232,8 +1192,6 @@ void SRpardiso::solve(bool smoothing)
 		model.CopyToSolutionVector(solutionTmp);
 	}
 	colIndex.Free();
-	double sElapsed = (dsecnd() - sInit);
-	model.solvSecs += sElapsed;
 
 #ifndef _DEBUG
 	//release pardiso memory:
@@ -1303,7 +1261,6 @@ void SRpardiso::solve64(bool smoothing)
 	MKL_INT64 solvphase;
 	MKL_INT64 nrhs = 1;
 
-	double sInit = dsecnd();
 	iparm[0] = 0;
 	MKL_INT64 msglvl = 0;//message level, 0 for no stats, 1 for stats to screen;
 	MKL_INT64 error = 0;
@@ -1316,14 +1273,7 @@ void SRpardiso::solve64(bool smoothing)
 	solvphase = 11; //analyze the matrix;
 	pardiso_64(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
 
-	int memNeeded = iparm[14]; //see mkl documentation
-	int mem2 = iparm[15] + iparm[16];
-	if (mem2 > memNeeded)
-		memNeeded = mem2;
-
-	double availmem = SRmachDep::availMemCheck();
-
-	if (memNeeded > availmem)
+	if (error == -2)
 		oocNeeded = true;
 
 	if (oocNeeded)
@@ -1336,16 +1286,14 @@ void SRpardiso::solve64(bool smoothing)
 		pardiso_64(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
 	}
 
+	if (error != 0)
+	{
+		LOGPRINT("pardiso matrix analysis phase. error = %d", error);
+		ERROREXIT;
+	}
+
 	solvphase = 22; //factor the matrix;
 	pardiso_64(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	if (error == -2 && !oocNeeded)
-	{
-		//try again with ooc on. redo analysis and factor in one pass with solvphase 12
-		oocNeeded = true;
-		iparm[59] = 2;//flag for ooc
-		solvphase = 12; //analysize and factor the matrix;
-		pardiso_64(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	}
 
 	if (error != 0)
 	{
@@ -1371,7 +1319,6 @@ void SRpardiso::solve64(bool smoothing)
 				ERROREXIT;
 			}
 		}
-
 	}
 	else
 	{
@@ -1386,8 +1333,6 @@ void SRpardiso::solve64(bool smoothing)
 		model.CopyToSolutionVector(solutionTmp);
 	}
 	colIndex.Free();
-	double sElapsed = (dsecnd() - sInit);
-	model.solvSecs += sElapsed;
 
 #ifndef _DEBUG
 	//release pardiso memory:
@@ -1395,3 +1340,5 @@ void SRpardiso::solve64(bool smoothing)
 	pardiso_64(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
 #endif
 }
+
+#endif //NOSOLVER

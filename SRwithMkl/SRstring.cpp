@@ -1,30 +1,20 @@
 /*
 Copyright (c) 2020 Richard King
 
-The stressRefine analysis executable "SRwithMkl" is free software: you can redistribute it and/or modify
+The stressRefine analysis executable "SRwithMkl" is free software:
+you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-"SRwithMkl" is distributed in the hope that it will be useful,
+SRwithMkl is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 The terms of the GNU General Public License are explained in the file COPYING.txt,
 also available at <https://www.gnu.org/licenses/>
-
-Note that "SRwithMkl" makes use of the pardiso sparse solver
-in the Intel MKL library, with which it must be linked.
-Copyright (c) 2018 Intel Corporation.
-You may use and redistribute the Intel MKL library, without modification, provided the conditions of
-the Intel Simplified Software license are met:
-https://software.intel.com/en-us/license/intel-simplified-software-license
-
-It is perfectly permissable to replace the use of the pardiso software from the MKL library
-with an equivalent open-source solver
 */
-
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -32,11 +22,99 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include <stdafx.h>
-#include <string.h>
+#include "SRmachDep.h"
 #include "SRstring.h"
+#include <sstream>  
 
-void SRstring::Copy(char *s, int n)
+using namespace std;
+
+static char bdfBuf[18];
+
+static string strBuf;
+
+SRstring::SRstring(SRstring& s2)
+{
+	Copy(s2);
+};
+
+SRstring::SRstring(const char* s)
+{
+	Copy(s);
+};
+
+SRstring::SRstring()
+{
+	fresh = true;
+	setTokSep(' ');
+	tokNum = 0;
+	bdfPointer = 0;
+	bdfWidth = 8;
+};
+
+
+SRstring::~SRstring()
+{
+	Clear();
+};
+
+void SRstring::Clear()
+{
+	//clear a string for reuse
+	str.erase();
+	strSubs.clear();
+};
+
+const char* SRstring::getStr()
+{
+	return str.data();
+}
+
+const char* SRstring::LastChar(const char c, bool after)
+{
+	//LastChar finds last occurrence of character c. returns c and remainder of
+	//string to right of c; returns NULL if c not found
+	unsigned p = str.rfind(c);
+	if (p < 0 || p >= str.size())
+		return NULL;
+	if (after)
+		p++;
+	strBuf = str.substr(p);
+	return strBuf.c_str();
+};
+
+void SRstring::Copy(SRstring& s2)
+{
+	str.assign(s2.str);
+	bdfWidth = s2.bdfWidth;
+	fresh = s2.fresh;
+	tokNum = 0;
+	bdfPointer = 0;
+	bdfWidth = s2.bdfWidth;
+	setTokSep(s2.tokSep);
+};
+
+char SRstring::GetChar(int i)
+{
+	return str[i];
+};
+
+char SRstring::operator [] (int i)
+{
+	return GetChar(i);
+};
+
+const char* SRstring::FirstChar(char c)
+{
+	//FirstChar finds 1st occurrence of character c. returns c and remainder of
+	//string to right of c; returns NULL if c not found
+	int n = str.find(c);
+	if (n < 0)
+		return NULL;
+	strBuf = str.substr(n);
+	return strBuf.c_str();
+};
+
+void SRstring::Copy(const char *s, int n)
 {
 //Copy string s, overriding SRstring.str of "this"
 	//input:
@@ -45,159 +123,141 @@ void SRstring::Copy(char *s, int n)
 	Clear();
 	if(s == NULL)
 		return;
-	if(n == 0)
-		len = strlen(s);
-	else
-		len = n;
-	str = new char[len + 1];
-	if(n == 0)
-		strcpy_s(str, len + 1, s);
-	else
-	{
-		strncpy_s(str, len + 1, s, n);
-		str[len] = '\0';
-	}
 	fresh = true;
+	str.assign(s);
+	tokNum = 0;
+	bdfPointer = 0;
+	bdfWidth = 8;
+	setTokSep(' ');
 }
 
-void SRstring::Cat(char *s, int n)
+void SRstring::Cat(SRstring& s2)
+{
+	Cat(s2.getStr());
+}
+
+void SRstring::operator = (const char* s)
+{
+	Copy(s);
+}
+void SRstring::operator = (SRstring& s2)
+{
+	Copy(s2.getStr());
+}
+
+void SRstring::operator += (const char* s)
+{
+	Cat(s);
+}
+
+void SRstring::operator += (SRstring& s)
+{
+	Cat(s);
+}
+
+bool SRstring::Compare(SRstring& s2, int n)
+{
+	return Compare(s2.getStr(), n);
+}
+
+bool SRstring::CompareUseLength(SRstring& s2)
+{
+	return CompareUseLength(s2.getStr());
+}
+
+bool SRstring::operator == (const char* s2)
+{
+	return CompareUseLength(s2);
+}
+
+bool SRstring::operator != (const char* s2)
+{
+	return !Compare(s2);
+}
+
+bool SRstring::operator == (SRstring& s2)
+{
+	return CompareUseLength(s2);
+}
+
+void SRstring::Cat(const char *s)
 {
 //concatenate string s onto SRstring.str, reallocating space
 	//input:
 		//s = string
-		//n = number of characters to concat. If n is 0, Copy s
-
-	if(len == 0)
-	{
+	if(str.length() == 0)
 		Copy(s);
-		return;
-	}
 	else
-	{
-		char *t = new char[len + 1];
-		strcpy_s(t, len + 1, str);
-		delete str;
-		if(n == 0)
-			len += strlen(s);
-		else
-			len += n;
-		str = new char[len + 1];
-		strcpy_s(str, len + 1, t);
-		if(n == 0)
-			strcat_s(str, len + 1, s);
-		else
-			strncat_s(str, len + 1, s, n);
-		delete t;
-	}
+		str.append(s);
 	fresh = true;
 }
 
-bool SRstring::Compare(char *s2, int n)
+bool SRstring::Compare(const char *s2, int n)
 {
-//see if s2 is same as str ("stricmp"); optional n chars ("strnicmp")
+//see if s2 is same as str; optional n chars
 //ignoring case
-	bool ret = false;
-	if(len == 0)
-	{
-		if (strcmp(s2, "") == 0)
-			return true;
-		else
-			return false;
-	}
-	if(n == 0)
-	{
-		if(_stricmp(str,s2) == 0)
-			ret = true;
-	}
-	else
-	{
-		if(_strnicmp(str,s2,n) == 0)
-			ret = true;
-	}
-	return ret;
+	return caseInsensitiveCompare(s2, n);
 }
 
-bool SRstring::CompareCaseSensitive(char *s2, int n)
+const char *SRstring::Token()
 {
-//see if s2 is same as str ("strcmp"); optional n chars ("strncmp")
-//case sensitive
-	bool ret = false;
-	if(len == 0)
+if (strSubs.size() == 0)
 	{
-		if(strcmp(s2,"") == 0)
-			return true;
-		else
-			return false;
-	}
-	if(n == 0)
-	{
-		int comp = strcmp(str, s2);
-		if (comp == 0)
-			ret = true;
-	}
-	else
-	{
-		if(strncmp(str,s2,n) == 0)
-			ret = true;
-	}
-	return ret;
-}
+		tokNum = 0;
+		//split the string using tokSep
 
+		// stringstream class ss; 
+		stringstream ss(str);
 
-char *SRstring::Token(char *sep)
-{
-//find next "Token" in SRstring.str, using standard library function strtok
-//caution: like strtok, this destroys the original string as it works its way through it 
-//finding tokens
-	if (len == 0)
-		return false;
-	char *mysep;
-	if (sep == NULL)
-	{
-		if (tokSep != NULL)
-			mysep = tokSep;
-		else
-			mysep = " ";
+		string subfound;
+		while (getline(ss, subfound, tokSep))
+		{
+			if(subfound.size() > 0)
+				strSubs.push_back(subfound);
+		}
 	}
-	else
-		mysep = sep;
-	if(fresh)
-	{
-		fresh = false;
-		return strtok_s(str, mysep, &nextToken);
-	}
+	if (tokNum >= (int) strSubs.size())
+		return NULL;
 	else
 	{
-		return strtok_s(NULL, mysep, &nextToken);
+		const char* retChars = strSubs[tokNum].c_str();
+		tokNum++;
+		return retChars;
 	}
 }
 
 bool SRstring::TokRead(int &i)
 {
 //get next Token of this string, interpret as integer
-	char *s = Token();
+	const char *s = Token();
+	i = -1;
 	if (s == NULL)
 		return false;
-	if (sscanf_s(s, "%d", &i) > 0)
+	if (strIsBlank(s))
+		return false;
+	if (SSCANF(s, "%d", &i) > 0)
 		return true;
 	else
 		return false;
 }
 
-bool SRstring::TokRead(double  &r, bool checkForTrailingComment)
+bool SRstring::TokRead(double  &r, bool checkForComment)
 {
-//get next Token of this string, interpret as double
-	char *s = Token();
+	//get next Token of this string, interpret as double
+	const char *s = Token();
 	r = 0.0;
+	if (strIsBlank(s))
+		return false;
 	if (s == NULL)
 		return false;
-	if (checkForTrailingComment)
+	if (checkForComment)
 	{
-		SRstring tmp = s;
+		SRstring tmp;
+		tmp.Copy(s);
 		if (tmp.Compare("//", 2))
 			return false;
 	}
-	if (sscanf_s(s, "%lg", &r) > 0)
+	if (SSCANF(s, "%lg", &r) > 0)
 		return true;
 	else
 		return false;
@@ -205,86 +265,44 @@ bool SRstring::TokRead(double  &r, bool checkForTrailingComment)
 
 int SRstring::IntRead()
 {
-	//read an integer from this string
 	int i = 0;
-	sscanf_s(str, "%d", &i);
+	SSCANF(getStr(), "%d", &i);
 	return i;
 }
 
+
 double SRstring::RealRead()
 {
-	//read a double from this string
 	double r = 0.0;
-	sscanf_s(str, "%lg", &r);
+	SSCANF(getStr(), "%lg", &r);
 	return r;
 }
 
-void SRstring::Clear()
-{
-	//clear a string for reuse
-	if (len != 0)
-	{
-		delete str;
-		str = NULL;
-	}
-	len = 0;
-	fresh = true;
-};
-
-bool SRstring::CompareSkipBlanks(char *s2)
-{
-	//see if s2 is same as str ("strncmp") using length of s2
-	//as number of characters
-	int n = strlen(str);
-	int nskip = 0;
-	for (int i = 0; i < n; i++)
-	{
-		if (str[i] != ' ')
-			break;
-		nskip++;
-	}
-	char *s3 = str + nskip;
-	n = strlen(s2);
-	if (_strnicmp(s2, s3, n) == 0)
-		return true;
-	else
-		return false;
-}
-
-bool SRstring::CompareUseLength(char *s2, bool useCase)
+bool SRstring::CompareUseLength(const char* s2)
 {
 //see if s2 is same as str ("strncmp") using length of s2
 //as number of characters
-	if(len == 0)
+	int n2 = strlen(s2);
+	int n = str.length();
+
+	if(n == 0)
 	{
-		if(strcmp(s2,"") == 0)
+		if(n2 == 0)
 			return true;
 		else
 			return false;
 	}
-	int n = strlen(s2);
-	if(n == 0 && len != 0)
+
+	if (n <  n2)
 		return false;
-	if(useCase)
-	{
-		if (strncmp(str, s2, n) == 0)
-			return true;
-		else
-			return false;
-	}
-	else
-	{
-		if (_strnicmp(str, s2, n) == 0)
-			return true;
-		else
-			return false;
-	}
+
+	return caseInsensitiveCompare(s2, n2);
 }
 
 void SRstring::Left(int n, SRstring &s2)
 {
 	//copy leftmost n characters of "this" to s2
-	s2.Copy(str, n);
+	s2.Copy(getStr(), n);
 }
 
 void SRstring::Left(char c, SRstring &s2, bool last)
@@ -292,36 +310,24 @@ void SRstring::Left(char c, SRstring &s2, bool last)
 	//copy characters of "this" left of char c to s2
 	//if last = true, then use last occurrence of c, else use 1st
 	int n;
-	char *tmp;
-	if(last)
-		tmp = LastChar(c);
+	if (last)
+		n = str.rfind(c);
 	else
-		tmp = FirstChar(c);
-	if (tmp != NULL)
-	{
-		//integer location in string:
-		n = tmp - str + 1;
-		Left(n - 1, s2);
-	}
+		n = str.find(c);
+	if (n < 0)
+		s2.Copy("");
+	else
+		s2.Copy(str.substr(0, n).c_str());
 }
 
 void SRstring::Right(char c, SRstring &s2)
 {
 	//copy characters of "this" right of last occurrence of char c to s2
-	int n;
-	char *tmp;
-	tmp = LastChar(c);
-	if (tmp != NULL)
+	int pos = str.rfind(c);
+	if (pos >= 0)
 	{
-		//integer location in string:
-		n = tmp - str + 1;
-		s2.Copy(str + n);
+		s2.Copy(str.substr(pos + 1).c_str());
 	}
-}
-
-void SRstring::Right(int n, SRstring &s2)
-{
-	s2.Copy(str + n);
 }
 
 bool SRstring::isCommentOrBlank(bool skipContinuation)
@@ -337,13 +343,78 @@ bool SRstring::isCommentOrBlank(bool skipContinuation)
 
 }
 
+
+bool SRstring::isBlank()
+{
+	SRstring s2;
+	s2 = getStr();
+	s2.TrimWhiteSpace();
+	if (s2.Compare(""))
+		return true;
+	else
+		return false;
+}
+
+
+bool SRstring::isBdfComment(bool &isMat, SRstring& matname)
+{
+	isMat = false;
+	if (str[0] == '$')
+	{
+		if (this->CompareUseLength("$ Femap with NX Nastran Material"))
+		{
+			isMat = true;
+			this->Right(':', matname);
+			matname.TrimWhiteSpace();
+		}
+		return true;
+	}
+	else
+		return false;
+
+}
+
+const char* SRstring::BdfToken(bool skipOnly)
+{
+	if (str.size() == 0)
+		return NULL;
+	if (!isCsv())
+	{
+		int n = str.size() - bdfPointer;
+		if (n <= 0)
+			return NULL;
+		int width = getBdfWidth();
+		if (n > width)
+			n = width;
+		int pprev = bdfPointer;
+		bdfPointer += width;
+		if (skipOnly)
+			return NULL;
+		strBuf = str.substr(pprev, n);
+		const char* s = strBuf.c_str();
+		return s;
+	
+	}
+	else
+	{
+		const char* s = Token();
+		if (skipOnly)
+			return NULL;
+		STRCPY(bdfBuf, 17, s);
+		return bdfBuf;
+	}
+}
+
+
 bool SRstring::BdfRead(int &i)
 {
 	i = 0;
-	char* s = BdfToken();
+	const char* s = BdfToken(false);
 	if (s == NULL)
 		return false;
-	if (sscanf_s(s, "%d", &i) > 0)
+	if (strIsBlank(s))
+		return false;
+	if (SSCANF(s, "%d", &i) > 0)
 		return true;
 	else
 		return false;
@@ -352,79 +423,43 @@ bool SRstring::BdfRead(int &i)
 bool SRstring::BdfRead(double &r)
 {
 	r = 0.0;
-	char* s = BdfToken();
+	const char* s = BdfToken(false);
 	if (s == NULL)
+		return false;
+	if (strIsBlank(s))
 		return false;
 	char buf[20];
 	realStringCopy(buf, s, strlen(s));
-	if (sscanf_s(buf, "%lg", &r) > 0)
+	if (SSCANF(buf, "%lg", &r) > 0)
 		return true;
 	else
 		return false;
 }
 
-bool SRstring::isBdfComment()
-{
-	if (str[0] == '$')
-		return true;
-	else
-		return false;
 
+bool SRstring::continueCheck()
+{
+	if (str.size() > 72)
+	{
+		char c = str[72];
+		truncate(72);
+		if (c == '+')
+			return true;
+	}
+	return false;
 }
 
-char *SRstring::BdfToken(char *sep)
+
+int SRstring::FirstCharLocation(const char c)
 {
-	//find next "Token" in SRstring.str, using standard library function strtok
-	//caution: like strtok, this destroys the original string as it works its way through it 
-	//finding tokens
-	if (str == NULL)
-		return false;
-	if (!csv)
-	{
-		int n = len - bdfPointer;
-		if (n <= 0)
-			return false;
-		int width = getBdfWidth();
-		if (n > width)
-			n = width;
-		strncpy_s(bdfBuf, 1 + width, str + bdfPointer, n);
-		bdfPointer += width;
-		return bdfBuf;
-	}
-
-	if (len == 0)
-		return false;
-
-	//comma separated. make sure ",," is handled correctly:
-	int ii = 0;
-	bool found = false;
-	for (int i = 0; i < len; i++)
-	{
-		if (str[i] == ',')
-		{
-			found = true;
-			break;
-		}
-		bdfBuf[ii] = str[i];
-		ii++;
-	}
-	bdfBuf[ii] = '\0';
-	if (!found)
-		str = NULL;
+	//returns 1st location of char c, -1 if not found
+	unsigned pos = str.find(c);
+	if (pos < 0)
+		return -1;
+	else if (pos < str.size())
+		return pos;
 	else
-	{
-		SRstring s2 = str + ii + 1;
-		Copy(s2);
-	}
-	return bdfBuf;
-}
-
-int SRstring::getBdfWidth()
-{
-	if (bdfPointer > 7)
-		return bdfWidth;
-	else
-		return 8;
+		return -1;
 }
 
 void SRstring::bdfCheckLargeField()
@@ -436,14 +471,62 @@ void SRstring::bdfCheckLargeField()
 		bdfWidth = 16;
 }
 
+int SRstring::getBdfWidth()
+{
+	if (bdfPointer > 7)
+		return bdfWidth;
+	else
+		return 8;
+}
+
 void SRstring::truncate(int n)
 {
 	//truncate this field at char n
-	str[n] = '\0';
-	len = n;
+	str.resize(n);
 }
 
-void SRstring::realStringCopy(char *dest, char* src, int len)
+void SRstring::TrimWhiteSpace()
+{
+	int k = 0;
+	for (int i = 0; i < getLength(); i++)
+	{
+		if (str[i] != ' ')
+		{
+			str[k] = str[i];
+			k++;
+		}
+	}
+	str[k] = '\0';
+	str.resize(k);
+}
+
+bool SRstring::strIsBlank(const char* str)
+{
+	int n = strlen(str);
+	for (int i = 0; i < n; i++)
+	{
+		if (str[i] != ' ')
+			return false;
+	}
+	return true;
+}
+
+void SRstring::setTokSep(const char sep)
+{
+	tokSep = sep;
+}
+
+bool SRstring::isCsv()
+{
+	return (tokSep == ',');
+}
+
+int SRstring::getLength()
+{
+	return str.size();
+}
+
+void SRstring::realStringCopy(char* dest, const char* src, int len)
 {
 	int ii = 0;
 	bool afterDot = false;
@@ -451,6 +534,8 @@ void SRstring::realStringCopy(char *dest, char* src, int len)
 	for (int i = 0; i < len; i++)
 	{
 		char c = src[i];
+		if (c == ' ')
+			continue;
 		if (c == 'e' || c == 'E')
 			efound = true;
 		if (afterDot && !efound)
@@ -469,28 +554,42 @@ void SRstring::realStringCopy(char *dest, char* src, int len)
 	dest[ii] = '\0';
 }
 
-int SRstring::FirstCharLocation(char c)
-{
-	//returns 1st location of char c, -1 if not found
-	char *cloc;
-	int loc = -1;
-
-	// Search forward. 
-	cloc = strchr(str, c);
-	if (cloc != NULL)
-		loc = (int)(cloc - str + 1);
-	return loc;
-}
-
 bool SRstring::isAllBlank()
 {
-	for (int i = 0; i < len; i++)
+	for (int i = 0; i < getLength(); i++)
 	{
 		if (str[i] != ' ')
 			return false;
 	}
 	return true;
-
 }
+
+bool SRstring::caseInsensitiveCompare(const char* s2, int n)
+{
+	//there is no case insensitive compare in c++ library
+	//so "rolled my own".could have used stricmp, strnicmp,
+	//or equiv strcasecmp, strncasecmp in linux, but this is more portable
+	int len = (int) getLength();
+	if (n == 0)
+	{
+		if( (int) strlen(s2) != len)
+		return false;
+	}
+	else
+	{
+		if(n < len)
+			len = n;
+	}
+	for (int i = 0; i < len; i++)
+	{
+		if (tolower(str[i]) != tolower(s2[i]))
+			return false;
+	}
+	return true;
+}
+
+
+
+
 
 

@@ -35,7 +35,6 @@ with an equivalent open-source solver
 //////////////////////////////////////////////////////////////////////
 
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 extern SRmodel model;

@@ -33,7 +33,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 #ifdef _DEBUG
@@ -229,7 +228,7 @@ double SRconstraint::GetEdgeEnforcedDisp(double r, int dof)
 		//dof = degree of freedom number (0-2)
 	//return:
 		//enforced displacement
-	int i, nn;
+	int i;
 	double dispt = 0.0, N[3];
 
 	dispt = 0.0;

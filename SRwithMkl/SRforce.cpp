@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include "SRmodel.h"
 
 #ifdef _DEBUG
@@ -93,11 +92,9 @@ void SRforce::AddNodalForce(SRforce& that, bool SummingSets)
 void SRforce::dumpData()
 {
 	SRfile& f = model.dumpFile;
-	int ndof = 3;
 	f.Print("%d ", entityId);
 	if (isPressure())
 	{
-		 ndof = 1;
 		f.Print(" pressure");
 	}
 	else if (isGcs())
@@ -163,7 +160,7 @@ void SRthermalForce::Process()
 	int el, i, fun, gfun, geq, gp, dof;
 	int nint;
 	double* globalForce;
-	double alphax, alphay, alphaz, r, s, t, w, detj, dbdx, dbdy, dbdz, dhdr, dhds, dhdt;
+	double r, s, t, w, detj, dbdx, dbdy, dbdz, dhdr, dhds, dhdt;
 	double temprst, ceT[6];
 	SRdoubleVector bv, dbdr, dbds, dbdt;
 	bv.Allocate(model.GetmaxNumElementFunctions());
@@ -264,7 +261,6 @@ bool SRthermalForce::CeTMult(SRmaterial *mat, double eTx, double eTy, double eTz
 	{
 		double c11 = mat->c11;
 		double lambda = mat->lambda;
-		double G = mat->G;
 		C[0][0] = c11;
 		C[0][1] = lambda;
 		C[0][2] = lambda;

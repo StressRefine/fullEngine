@@ -46,14 +46,10 @@ using namespace std;
 #define ALLOCATEMEMORY new
 #define DELETEMEMORY delete
 
-#define SRASSERT(expn) SRutil::SRAssert(__FILE__,__LINE__,(expn))
-
 class SRutil  
 {
 public:
-	static void ErrorExit(char* file, int line);
-	static void TimeStamp();
-	static void SRAssert(char* file, int line, bool expn);
+	static void ErrorExit(const char* file, int line);
 	SRutil(){};
 	~SRutil(){};
 };
@@ -81,7 +77,6 @@ public:
 			Free();
 		num = nt;
 		d = ALLOCATEMEMORY int[num];
-		SRASSERT(d != NULL);
 		Zero();
 	};
 	void PushBack(int v);
@@ -107,7 +102,7 @@ public:
 		for(int i = 0; i < len; i++)
 			d[i] = v2.d[i];
 	};
-	int* GetVector(){ SRASSERT(d != NULL); return d; };
+	int* GetVector(){ return d; };
 	inline int Get(int i){ return d[i];};
 	inline void Put(int i,int di){ d[i] = di; };
 	inline void PlusAssign(int i, int di){ d[i] += di; };
@@ -156,7 +151,6 @@ public:
 			Free();
 		num = nt;
 		d = ALLOCATEMEMORY double[num];
-		SRASSERT(d != NULL);
 		Zero();
 	};
 	void Zero()
@@ -210,13 +204,12 @@ public:
 	};
 	int GetNum(){ return d.size(); };
 	inline gen* GetVector(){ return &d[0]; };
-	inline gen *GetPointer(int i){ SRASSERT(i >= 0 && i < d.size()); return &d[i]; };
-	gen& Get(int i){ SRASSERT(i >= 0 && i < d.size()); return d[i]; };
+	inline gen *GetPointer(int i){ return &d[i]; };
+	gen& Get(int i){ return d[i]; };
 	inline void Put(int i, gen &di){
-		SRASSERT(i >= 0 && i< d.size());
 		d[i] = di;
 	};
-	inline void PlusAssign(int i, gen &di){ SRASSERT(i >= 0 && i<num); d[i] += di; };
+	inline void PlusAssign(int i, gen &di){ d[i] += di; };
 	void pushBack(gen dt){ d.push_back(dt); };
 	gen operator [] (int i) { return Get(i); };
 	SRvector(int nt){ d.resize(0); Allocate(nt); };
@@ -259,13 +252,12 @@ public:
 	int GetNumAllocated(){ return d.size(); };
 	gen* Add()
 	{
-		SRASSERT(num < d.size());
 		if (d[num] == NULL)
 			d[num] = ALLOCATEMEMORY gen();
 		num++;
 		return d[num - 1];
 	};
-	inline gen *GetPointer(int i){ SRASSERT(i >= 0 && i < num); return d[i]; };
+	inline gen *GetPointer(int i){return d[i]; };
 
 	void packNulls()
 	{
@@ -332,11 +324,9 @@ public:
 		n = nt;
 		m = mt;
 		d = ALLOCATEMEMORY int* [n];
-		SRASSERT(d != NULL);
 		for(int i = 0; i < n; i++)
 		{
 			d[i] = ALLOCATEMEMORY int[m];
-			SRASSERT(d[i] != NULL);
 		}
 		Zero();
 	};
@@ -346,21 +336,21 @@ public:
 			return;
 		for(int i = 0; i < n; i++)
 			DELETEMEMORY d[i];
-		DELETEMEMORY [n] d;
+		DELETEMEMORY d;
 		d = NULL;
 		n = m = 0;
 	};
 	inline int Get(int i,int j)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); return d[i][j];
+		return d[i][j];
 	};
 	inline void Put(int i,int j, int v)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); d[i][j] = v;
+		d[i][j] = v;
 	};
 	inline void PlusAssign(int i, int j, int v)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); d[i][j] += v;
+		d[i][j] += v;
 	};
 	void getSize(int& nt, int &mt){ nt = n; mt = m; };
 	int getNumCols(){ return n; };
@@ -387,11 +377,9 @@ public:
 		n = nt;
 		m = mt;
 		d = ALLOCATEMEMORY double*[n];
-		SRASSERT(d != NULL);
 		for (int i = 0; i < n; i++)
 		{
 			d[i] = ALLOCATEMEMORY double[m];
-			SRASSERT(d[i] != NULL);
 		}
 		Zero();
 	};
@@ -401,7 +389,7 @@ public:
 			return;
 		for (int i = 0; i < n; i++)
 			DELETEMEMORY d[i];
-		DELETEMEMORY[n] d;
+		DELETEMEMORY d;
 		d = NULL;
 		n = m = 0;
 	};
@@ -426,15 +414,15 @@ public:
 
 	inline double Get(int i,int j)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); return d[i][j];
+		return d[i][j];
 	};
 	inline void Put(int i, int j ,double v)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); d[i][j] = v;
+		d[i][j] = v;
 	};
 	inline void PlusAssign(int i, int j, double v)
 	{
-		SRASSERT(i >= 0 && i < n); SRASSERT(j >= 0 && j < m); d[i][j] += v;
+		d[i][j] += v;
 	};
 	void getSize(int& nt, int &mt){ nt = n; mt = m; };
 	int getNumCols(){ return n; };
@@ -463,11 +451,9 @@ public:
 		if(d != NULL)
 			Free();
 		d = ALLOCATEMEMORY gen* [n];
-		SRASSERT(d != NULL);
 		for(int i = 0; i < n; i++)
 		{
 			d[i] = ALLOCATEMEMORY gen[m];
-			SRASSERT(d[i] != NULL);
 		}
 	};
 	void Free()
@@ -476,7 +462,7 @@ public:
 			return;
 		for (int i = 0; i < n; i++)
 			DELETEMEMORY d[i];
-		DELETEMEMORY [n] d;
+		DELETEMEMORY d;
 		d = NULL;
 		n = m = 0;
 	};

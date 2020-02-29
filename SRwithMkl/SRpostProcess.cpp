@@ -31,7 +31,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdlib.h>
 #include <search.h>
 #include <string>
@@ -64,7 +63,6 @@ double SRpostProcess::GlobalStrainSmooth()
 	//global strain smoothing
 	//since strain continuity is not assured across material interfaces,
 	//smooth strains in groups of elements with same material
-	//double sInit = dsecnd();
 
 	int n = model.GetNumFunctions();
 	model.AllocateSmoothFunctionEquations(n);
@@ -125,9 +123,6 @@ double SRpostProcess::GlobalStrainSmooth()
 
 	}
 
-	//double sElapsed = (dsecnd() - sInit);
-	//OUTPRINT("global smooth elapsed secs: %lg", sElapsed);
-
 	return strainMax;
 }
 
@@ -144,8 +139,10 @@ double SRpostProcess::ElementStrainSmoothByMaterial()
 
 		//sacrificial elements are smoothed together with other elements of same material to avoid discontinuity at 
 		//boundary. sacrificial elements are frozen at p2 to minimize effects of singularities
-
-	int e, i, j, nint, gp, gi, gj, stiffLoc, comp, symloc, elmax;
+#ifdef NOSOLVER
+	return 0.0;
+#else
+	int e, i, j, nint, gp, gi, comp, symloc;
 	double r, s, t, w, bi, bj, detJ, strain[6], ae, strainMax = 0.0, stress[6], svm, svmmax = 0.0;
 	double eT, eTmax = 0.0;
 	SRelement* elem;
@@ -168,7 +165,7 @@ double SRpostProcess::ElementStrainSmoothByMaterial()
 		strainRhsvec[i] = smoothedStrains[i].GetVector();
 	}
 	int nfunel;
-	int len, eqi, eqj;
+	int len, eqi;
 
 	for(e = 0; e < model.GetNumElements(); e++)
 	{
@@ -220,7 +217,6 @@ double SRpostProcess::ElementStrainSmoothByMaterial()
 			{
 				gi = elem->GetFunctionNumber(i);
 				eqi = model.GetSmoothFunctionEquation(gi);
-				SRASSERT(eqi >= 0);
 				bi = basisvec[i] * w;
 				for (comp = 0; comp < 6; comp++)
 					strainRhsvec[comp][eqi] += (strain[comp]*bi);
@@ -236,7 +232,6 @@ double SRpostProcess::ElementStrainSmoothByMaterial()
 		if (elSvmMax > svmmax)
 		{
 			svmmax = elSvmMax;
-			elmax = e;
 		}
 
 		par->smoothAssemble(e, stiff);
@@ -247,6 +242,7 @@ double SRpostProcess::ElementStrainSmoothByMaterial()
 	par->clear();
 
 	return strainMax;
+#endif
 }
 
 void SRpostProcess::PostProcess()
@@ -267,7 +263,7 @@ void SRpostProcess::PostProcess()
 		mat->PutMaxSvm(0.0);
 	}
 
-	int i, j, dof;
+	int i;
 	SRnode* node;
 
 	int numnode = model.GetNumNodes();
@@ -299,7 +295,6 @@ void SRpostProcess::PostProcess()
 	FRDPRINT(" -5  SXY         1    4    1    2");
 	FRDPRINT(" -5  SYZ         1    4    2    3");
 	FRDPRINT(" -5  SZX         1    4    3    1");
-	double stressComp;
 	double stressConv = model.stressUnitConversion;
 	for (i = 0; i < numnode; i++)
 	{
@@ -370,7 +365,7 @@ void SRpostProcess::PostProcessForBreakoutPartial()
 		mat->PutMaxSvm(0.0);
 	}
 
-	int i, j, dof;
+	int i;
 	SRstring line, tok;
 
 	//default output: Cgx (Calculix) .frd format
@@ -405,7 +400,6 @@ void SRpostProcess::PostProcessForBreakoutPartial()
 	FRDPRINT(" -5  SXY         1    4    1    2");
 	FRDPRINT(" -5  SYZ         1    4    2    3");
 	FRDPRINT(" -5  SZX         1    4    3    1");
-	double stressComp;
 	double conv = model.stressUnitConversion;
 	for (i = 0; i < numNodes; i++)
 	{
@@ -584,13 +578,12 @@ void SRpostProcess::CalculateElementStresses(SRelement* elem, bool checkMaxOnly)
 	static int numNodesTotalBrick = 27; //nodes, centroid, face centroids
 	static int numNodesTotalTet = 15; //nodes, centroid, face centroids
 	static int numNodesTotalWedge = 21; //nodes, centroid, face centroids
-	int i, nn, ne, nnt;
+	int i, nn, ne;
 	double r, s, t;
 	double stress[6];
 
 nn = elem->GetNumNodes();
 	ne = elem->GetNumLocalEdges();
-	nnt = nn + ne;
 	SRnode* node;
 	SRedge* edge;
 	int id;
@@ -601,11 +594,9 @@ nn = elem->GetNumNodes();
 	elem->SetBasisData(threadnum);
 	bool hasAllowable = !checkMaxOnly && model.allMatsHaveAllowable && elem->GetMaterial()->isAllowableAssigned();
 	double Allowable = 0.0;
-	int matid = elem->GetMaterial()->getId();
 	if(hasAllowable)
 		Allowable = elem->GetMaterial()->GetAllowableStress();
 	int numNodesYielded = 0;
-	bool yielded = false;
 	for (i = 0; i < nn; i++)
 	{
 		id = elem->GetNodeId(i);
@@ -724,12 +715,11 @@ void SRpostProcess::fillSacricialElementNodalStress(SRelement* elem, bool doMaxC
 	//elem = pointer to element
 	//note:
 	//fills contribution of this element to nodalStress
-	int i, nn, ne, nnt;
+	int i, nn, ne;
 	double r, s, t;
 	double stress[6];
 	nn = elem->GetNumNodes();
 	ne = elem->GetNumLocalEdges();
-	nnt = nn + ne;
 	SRedge* edge;
 	int id;
 	int threadnum = elem->GetThread();
@@ -746,7 +736,6 @@ void SRpostProcess::fillSacricialElementNodalStress(SRelement* elem, bool doMaxC
 	for (i = 0; i < nn; i++)
 	{
 		id = elem->GetNodeId(i);
-		SRnode* node = model.GetNode(id);
 		if (doMaxClipping && nodalStressCount.Get(id) != 0)
 			continue;
 		elem->NodeNaturalCoords(i, r, s, t);
@@ -780,7 +769,6 @@ void SRpostProcess::fillSacricialElementNodalStress(SRelement* elem, bool doMaxC
 		if (edge->GetPorder() < 2)
 			continue;
 		id = edge->GetMidNodeId();
-		SRnode* node = model.GetNode(id);
 		if (doMaxClipping && nodalStressCount.Get(id) != 0)
 			continue;
 
@@ -938,7 +926,7 @@ int SRpostProcess::MeshToFrd()
 	FRDPRINT("    1C"); // ''1C'' defines a new calc
 	FRDPRINT("    1UDATE   26.march.2000"); // ''1U'' stores user job - information, can be any string, ttd put real date, add more lines, e.g. PGM stressrefine, model file path 
 	//nodes:
-	int i, j, dof;
+	int i, j;
 	SRnode* node;
 	int numnode = model.GetNumNodes();
 	int numNodeOut = 0;
@@ -1050,9 +1038,9 @@ void SRpostProcess::writeFrd()
 void SRpostProcess::readPreviousResultsF06()
 {
 	SCREENPRINT("reading displacment and stress (f06) results.\nsource:\n");
-	SCREENPRINT(" %s\n", model.f06File.filename.str);
+	SCREENPRINT(" %s\n", model.f06File.filename.getStr());
 	OUTPRINT(" displacment and stress (f06) results source:");
-	OUTPRINT(" %s", model.f06File.filename.str);
+	OUTPRINT(" %s", model.f06File.filename.getStr());
 	SRfile& f = model.f06File;
 	bool dispok = true;
 	if (!f.Open(SRinputMode))
@@ -1089,7 +1077,7 @@ bool SRpostProcess::getF06DispOrStressLineCheckForSkip(SRfile& f, SRstring& line
 	SRstring linesav;
 	linesav = line;
 	string sline;
-	sline.assign(line.str);
+	sline.assign(line.getStr());
 	int pageLoc = sline.find("  PAGE");
 	if (pageLoc >= 0)
 	{
@@ -1113,11 +1101,8 @@ bool SRpostProcess::readPreviousDisplacementF06()
 	//notes:
 	//if minPorder =1, reads displacements at corners, converts to p1 solution
 	//else reads displacements at corners and midnodes, converts to p2 solution
-	bool debugF06 = false;
 
 	SRfile& f = model.f06File;
-	int dof, fun;
-	SRnode* node;
 	SRvec3 disp;
 	SRstring line, tok;
 
@@ -1133,10 +1118,10 @@ bool SRpostProcess::readPreviousDisplacementF06()
 		}
 		if (!header1Found)
 		{
-			char* str = line.FirstChar('D');
-			if (str != NULL)
+			const char* s = line.FirstChar('D');
+			if (s != NULL)
 			{
-				tok.Copy(str);
+				tok.Copy(s);
 				if (tok.CompareUseLength("D I S P L A C E M E N T   V E C T O R"))
 					header1Found = true;
 			}
@@ -1218,9 +1203,8 @@ void SRpostProcess::readPreviousStressF06()
 {
 	//make sure stress records exist in F06 file
 	SRfile& f = model.f06File;
-	int nnode = model.nodes.GetNum();
 	SRstring line, tok;
-	line.setTokSep(" ");
+	line.setTokSep(' ');
 	int numel = model.GetNumElements();
 	//read header lines until find "S T R E S S" header.
 	// Note have to also look for "C H E X A" or "C P E N T A" or "C T E T R A" or  for mixed meshes
@@ -1230,14 +1214,14 @@ void SRpostProcess::readPreviousStressF06()
 	{
 		if (!f.GetLine(line))
 			break;
-		char* str = line.FirstChar('S');
-		if (str != NULL)
+		const char* s = line.FirstChar('S');
+		if (s != NULL)
 		{
-			tok.Copy(str);
+			tok.Copy(s);
 			if (tok.CompareUseLength("S T R E S S E S   I N"))
 			{
-				str = tok.FirstChar('(');
-				line.Copy(str);
+				s = tok.FirstChar('(');
+				line.Copy(s);
 				if (line.CompareUseLength("( C H E X A") || line.CompareUseLength("( C P E N T A") || line.CompareUseLength("( C T E T R A"))
 				{
 					stressHeaderFound = true;
@@ -1301,7 +1285,6 @@ void SRpostProcess::readPreviousStressF06()
 		tok = line.Token();
 		bool readCenter = false;
 		double stress[6];
-		double x, y, z;
 		if (tok.CompareUseLength("CENTER"))
 		{
 			for (skip = 0; skip < 2; skip++)
@@ -1381,7 +1364,7 @@ void SRpostProcess::readPreviousStressF06()
 		{
 			OUTPRINT("Stress Read Error. element %d", eluid);
 			OUTPRINT("line from f06 file:");
-			OUTPRINT("%s", lineSav.str);
+			OUTPRINT("%s", lineSav.getStr());
 			break;
 		}
 		numelRead++;
@@ -1667,7 +1650,7 @@ void SRpostProcess::PlotFaces(int numFace, int fidv[])
 
 }
 
-void SRpostProcess::PlotElems(int numelToPlot, int* elems, char* inName, int filenum)
+void SRpostProcess::PlotElems(int numelToPlot, int* elems, const char* inName, int filenum)
 {
 	SRstring name;
 	name.Copy(model.outdir);
@@ -1681,7 +1664,7 @@ void SRpostProcess::PlotElems(int numelToPlot, int* elems, char* inName, int fil
 	if (filenum != -1)
 	{
 		char buf[20];
-		sprintf_s(buf, "%d", filenum);
+		SPRINTF(buf, "%d", filenum);
 		name.Cat(buf);
 	}
 	name.Cat(".frd");
@@ -1785,7 +1768,6 @@ void SRpostProcess::PlotElems(int numelToPlot, int* elems, char* inName, int fil
 				tmpNodeDisps.Put(mid, 1);
 			}
 		}
-		int jjj = 0;
 	}
 	//displacements
 
@@ -1831,7 +1813,7 @@ void SRpostProcess::PlotSBElems(char* inName, int filenum)
 	PlotElems(nelsbo, ellist.d, inName, filenum);
 }
 
-void SRpostProcess::PlotElemsSBOnly(int numelToPlot, int* elems, char* inName, int filenum)
+void SRpostProcess::PlotElemsSBOnly(int numelToPlot, int* elems, const char* inName, int filenum)
 {
 	SRstring name;
 	name.Copy(model.outdir);
@@ -1845,7 +1827,7 @@ void SRpostProcess::PlotElemsSBOnly(int numelToPlot, int* elems, char* inName, i
 	if (filenum != -1)
 	{
 		char buf[20];
-		sprintf_s(buf, "%d", filenum);
+		SPRINTF(buf, "%d", filenum);
 		name.Cat(buf);
 	}
 	name.Cat(".frd");
@@ -1959,7 +1941,6 @@ void SRpostProcess::PlotElemsSBOnly(int numelToPlot, int* elems, char* inName, i
 				tmpNodeDisps.Put(mid, 1);
 			}
 		}
-		int jjj = 0;
 	}
 	//displacements
 
@@ -2012,7 +1993,7 @@ void SRpostProcess::clipBreakoutSacrStreses()
 	{
 		//don't let nodalStress of any sacrificial node be high compared to max in model
 		double target = 0.8*model.GetStressMax();
-		double stress[6], svmClipped;
+		double stress[6];
 
 		for (int i = 0; i < model.GetNumNodes(); i++)
 		{

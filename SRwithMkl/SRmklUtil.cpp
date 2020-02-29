@@ -33,7 +33,9 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
+#include "SRmachDep.h"
+#ifndef NOSOLVER
+
 #include <stdlib.h>
 #include "SRmklUtil.h"
 #include "SRutil.h"
@@ -119,3 +121,4 @@ int SRmklIntCompareFunc(const void *v1, const void *v2)
 	//comparison function for binary search
 	return *((int *)v1) - *((int *)v2);
 }
+#endif

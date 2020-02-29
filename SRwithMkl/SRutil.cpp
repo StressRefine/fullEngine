@@ -19,7 +19,7 @@ in the Intel MKL library, with which it must be linked.
 Copyright (c) 2018 Intel Corporation.
 You may use and redistribute the Intel MKL library, without modification, provided the conditions of
 the Intel Simplified Software license are met:
-https://software.intel.com/en-us/license/intel-simplified-software-license
+https://software.intel.com/en-us/license/intel-simplified-software-licensee
 
 It is perfectly permissable to replace the use of the pardiso software from the MKL library
 with an equivalent open-source solver
@@ -32,7 +32,6 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <omp.h>
 #include "SRmodel.h"
 
@@ -40,7 +39,7 @@ extern SRmodel model;
 
 static bool errorExitCalled = false;
 
-void SRutil::ErrorExit(char *file, int line)
+void SRutil::ErrorExit(const char *file, int line)
 {
 	//print error messages and shut down
 	//when fatal error occurs
@@ -53,8 +52,8 @@ void SRutil::ErrorExit(char *file, int line)
 	errorExitCalled = true;
 	REPPRINT("StressRefine abnormal termination");
 
-	SRstring s = file;
-	char *t = s.LastChar('\\');
+	SRstring s;
+	s.Copy(file);
 	OUTPRINT("*******************************************************\nFatal Error: \nPlease Contact Customer Support at www.StressRefine.com");
 	OUTPRINT("File: %s", file);
 	OUTPRINT("line: %d", line);
@@ -65,22 +64,6 @@ void SRutil::ErrorExit(char *file, int line)
 	LOGPRINT("*******************************************************\n\n");
 
 	exit(0);
-}
-
-void SRutil::SRAssert(char *file, int line, bool expn)
-{
-	//error exit if expn is not true
-	if (!expn)
-		SRutil::ErrorExit(file, line);
-}
-
-void SRutil::TimeStamp()
-{
-	//put a time stamp in model output file
-	SRstring line;
-	SRmachDep::GetTime(line);
-	OUTPRINT(line.str);
-	OUTPRINTRET;
 }
 
 void SRintVector::PushBack(int v)

@@ -69,7 +69,7 @@ class SRmaterial
 public:
 	//functions:
 	void IsoCreate(double et, double nut);
-	char* GetName(){ return name.str; };
+	const char* GetName();
 	SRmaterialType GetType(){ return type; };
 	double GetRho(){ return rho; };
 	double MatScale();
@@ -87,7 +87,7 @@ public:
 	double GetVolPercentYielded();
 	void SetVolPercentYielded(double p) { volPercentYielded = p; };
 	void AddToVolPercentYielded(double p) { volPercentYielded += p; };
-	void SRmaterial::printToFile(SRfile &f);
+	void printToFile(SRfile &f);
 	bool isActive(){ return (numElements > 0); };
 	bool diffElast(SRmaterial* that);
 	int getId(){ return id; };

@@ -32,13 +32,12 @@ with an equivalent open-source solver
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
 #include "SRmodel.h"
 #include "SRinput.h"
-
+#ifndef NOSOLVER
 
 #ifdef _DEBUG
 #undef THIS_FILE
@@ -367,7 +366,6 @@ void SRpardiso::solveFFG(SRFaceForceGroup *ffg)
 	MKL_INT solvphase;
 	MKL_INT nrhs = 1;
 
-	double sInit = dsecnd();
 	iparm[0] = 0;
 	MKL_INT msglvl = 0;//message level, 0 for no stats, 1 for stats to screen;
 	MKL_INT error = 0;
@@ -383,14 +381,9 @@ void SRpardiso::solveFFG(SRFaceForceGroup *ffg)
 
 	solvphase = 11; //analyze the matrix;
 	pardiso(parSolveHandle, &maxfct, &mnum, &mtype, &solvphase, &neq, (void*)a, ia, ja, permp, &nrhs, iparm, &msglvl, (void*)b, (void*)x, &error);
-	int memNeeded = iparm[14]; //see mkl documentation
-	int mem2 = iparm[15] + iparm[16];
-	if (mem2 > memNeeded)
-		memNeeded = mem2;
-
-	double MbytesNeeded = ((double)memNeeded) / 1024.0;
-
-	double availmem = SRmachDep::availMemCheck();
+	//not enough memory. handled in full SRpardiso branch
+	if (error == -2)
+		ERROREXIT;
 
 	LOGPRINT("Pardiso sparse equation solving ");
 
@@ -533,8 +526,6 @@ void SRpardiso::bookkeepFFG(SRFaceForceGroup *ffg)
 	{
 		int fid = ffg->faceIds.Get(e);
 		SRface* face = model.GetFace(fid);
-		int forceid = face->forceIds.Get(0);
-		SRforce* faf = model.GetForce(forceid);
 		int nfun = face->GetNumNodesTotal();
 		int nelNz = 0;
 		SRmklIntVector* ElEquationNumbers = AllElEquationNumbers.GetPointer(e);
@@ -598,4 +589,6 @@ void SRpardiso::fillColindFFG(SRFaceForceGroup *ffg, int neq)
 		}
 	}
 }
+
+#endif
 
