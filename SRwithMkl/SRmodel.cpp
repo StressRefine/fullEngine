@@ -108,7 +108,6 @@ void SRmodel::Initialize()
 	anyHotSpotElFound = false;
 	breakoutRadSacr = BIG;
 	localAdapt = false;
-	outputf06 = false;
 	allFacesFlat = false;
 	doEnergySmooth = true;
 	anyUnsupNode = false;
@@ -204,7 +203,6 @@ void SRmodel::Run()
 
 	nodeUidAtMaxDisp = 0;
 
-
 	for (its = 0; its < nits; its++)
 	{
 		adaptIt = its;
@@ -281,7 +279,6 @@ void SRmodel::Run()
 		pd.maxsvm = stressMax;
 		pd.maxsp1 = maxsp1;
 		pd.maxCustom = maxCustom;
-
 
 		prevStressMax = stressMax;
 
@@ -367,11 +364,11 @@ void SRmodel::Run()
 	frep.PrintReturn();
 
 	if (breakout)
-		frep.PrintLine("Maximum von Mises Stress in local region of Model: %12.3lg  ", stressUnitConversion*stressMax);
+		frep.PrintLine("Maximum von Mises Stress in local region of Model: %12.3lg", stressUnitConversion*stressMax);
 	else
-		frep.PrintLine("Maximum von Mises Stress in Model: %12.3lg  ", stressUnitConversion*stressMax);
-	frep.PrintLine("Maximum Principal Stress in Model: %12.3lg  ", stressUnitConversion*maxsp1);
-	frep.PrintLine("Minimum Principal Stress in Model: %12.3lg  ", stressUnitConversion*minsp2);
+		frep.PrintLine("Maximum von Mises Stress in Model: %12.3lg", stressUnitConversion*stressMax);
+	frep.PrintLine("Maximum Principal Stress in Model: %12.3lg", stressUnitConversion*maxsp1);
+	frep.PrintLine("Minimum Principal Stress in Model: %12.3lg", stressUnitConversion*minsp2);
 
 	frep.PrintLine("Estimated Error in Stress Calculation: %6.2lg percent", errForOutput);
 	double maxPercentYielded = 0.0;
@@ -427,19 +424,20 @@ void SRmodel::Run()
 	{
 		if (breakout)
 		{
-			frep.PrintLine("Adaptive Analysis     Max Polynomial Order    Estimated Stress Error    Max Von Mises Stress in");
-			frep.PrintLine("Iteration                                                               local region of Model");
+			frep.PrintLine("Adaptive Analysis   Maximum           Estimated     Max Von Mises     Maximum Principal");
+			frep.PrintLine("Iteration           Polynomial Order  Stress Error  Stress in local   Stress in local");
+			frep.PrintLine("                                                    region of model   region of model");
 		}
 		else
 		{
-			frep.PrintLine("Adaptive Analysis     Max Polynomial Order    Estimated Stress Error    Max Von Mises Stress");
-			frep.PrintLine("Iteration                                                               in Model");
-
+			frep.PrintLine("Adaptive Analysis   Maximum           Estimated     Max Von Mises     Maximum Principal");
+			frep.PrintLine("Iteration           Polynomial Order  Stress Error  Stress in model   Stress in model");
 		}
 		for (int its = 0; its < lastIt; its++)
 		{
-			SRPassData& pd = passData.Get(its);
-			frep.PrintLine("         %d                      %d                  %-6.2lg                    %12.3lg", its + 1, pd.maxp, pd.err, stressUnitConversion*pd.maxsvm);
+			SRPassData& pd = passData.Get(its);  
+			frep.PrintLine("    %d                      %d            %-6.2lg       %-12.3lg       %-12.3lg", its + 1, pd.maxp, pd.err,
+				stressUnitConversion*pd.maxsvm, stressUnitConversion * pd.maxsp1);
 		}
 	}
 

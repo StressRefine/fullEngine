@@ -394,7 +394,6 @@ public:
 	bool allConstraintsAsPenalty;
 	SRvec3 umaxInModel;
 	int nodeuidAtumax;
-	bool outputf06;
 	bool doEnergySmooth;
 
 	//1 instance of each utility class:

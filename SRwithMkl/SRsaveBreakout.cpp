@@ -519,8 +519,6 @@ void SRpostProcess::outputBreakout(int nelBreakout, int numBreakoutCon)
 		bktSrs.PrintLine("ERRORTOL %lg", model.ErrorTolerance);
 	if (model.errorChecker.lowStressTol != LOWSTRESSTOL)
 		bktSrs.PrintLine("LOWSTRESSTOL %lg", model.errorChecker.lowStressTol);
-	if (model.outputf06)
-		bktSrs.PrintLine("outputf06");
 
 	bktSrs.Close();
 
@@ -1293,7 +1291,7 @@ int SRpostProcess::fillBreakoutModelOriginFromDispCentroid(SRBreakoutData *bdat)
 
 void SRpostProcess::PlotTopoLevelElems(int numLevels)
 {
-	bool dbgPlotTopoElems = false;//ttd!!
+	bool dbgPlotTopoElems = false;
 	if (!dbgPlotTopoElems)
 		return;
 	SRintVector ellist;
@@ -1309,7 +1307,7 @@ void SRpostProcess::PlotTopoLevelElems(int numLevels)
 
 void SRpostProcess::PlotElemsByRadius(double Rad, int filenum)
 {
-	bool dbgPlotRadElems = false;//ttd!!
+	bool dbgPlotRadElems = false;
 	if (!dbgPlotRadElems)
 		return;
 	SRintVector ellist;

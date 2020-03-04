@@ -345,8 +345,7 @@ void SRpostProcess::PostProcess()
 
 	model.cgxFrdFile.Close();
 
-	if (model.outputf06)
-		OutputF06();
+	OutputF06();
 
 	nodalStress.Free();
 	nodeDisps.Free();
@@ -451,8 +450,7 @@ void SRpostProcess::PostProcessForBreakoutPartial()
 
 	model.cgxFrdFile.Close();
 
-	if (model.outputf06)
-		OutputF06();
+	OutputF06();
 
 	nodalStress.Free();
 	nodeDisps.Free();

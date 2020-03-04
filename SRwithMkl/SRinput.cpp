@@ -76,7 +76,9 @@ void SRinput::ReadModel()
 	filename += ".frd";
 	model.cgxFrdFile.filename = filename;
 
-	filename = basename;
+	model.outdir.Left(slashChar, filename);
+	filename += slashStr;
+	filename += model.fileNameTail;
 	filename += "_SR.f06";
 	model.f06outFile.filename = filename;
 
@@ -251,8 +253,6 @@ void SRinput::ReadModel()
 	numNodeFaces.Allocate(nnode);
 	nodeFaces.Allocate(nnode, MAXNODEFACEOWNERS);
 
-	//ttd!! rethink if full model unsup has regs
-	//if (!model.saveBreakout || numUnSupportedNode > 0)
 	if (!model.saveBreakout)
 	{
 		model.FillGlobalFaces();
@@ -1951,12 +1951,6 @@ void SRinput::readSettings()
 		{
 			model.doEnergySmooth = false;
 			OUTPRINT(" no energy smoothing of nodal loads");
-			anyCustom = true;
-		}
-		else if (line.CompareUseLength("outputF06"))
-		{
-			model.outputf06 = true;
-			OUTPRINT(" Output Ascii Nastran Stresses (.f06)");
 			anyCustom = true;
 		}
 		else if (line.CompareUseLength("savebreakout"))

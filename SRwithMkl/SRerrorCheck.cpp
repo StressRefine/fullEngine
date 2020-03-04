@@ -888,22 +888,6 @@ double SRerrorCheck::getElementFaceTraction(int lface, SRface *face, SRelement* 
 	face->Position(rf, sf, facePos);
 	model.map.ElementNaturalCoordsFromFace(elem, lface, rf, sf, r, s, t);
 
-#ifdef _DEBUG
-	if (!badfaceToElMapWarned)
-	{
-		SRvec3 facePos;
-		face->Position(rf, sf, facePos);
-		SRvec3 elPos;
-		elem->Position(r, s, t, elPos);
-		double d = elPos.Distance(facePos);
-		if (d > SMALL*model.GetSize())
-		{
-			OUTPRINT("bad face to element mapping. element: %d lface: %d", elem->GetUserid(), lface);
-			badfaceToElMapWarned = true;
-		}
-	}
-#endif
-
 	elem->FillMapping(r, s, t);
 	elem->FillBasisFuncs(r, s, t, derivonly);
 	eT = elem->CalculateRawStrain(r, s, t, strain, etx, ety, etz);

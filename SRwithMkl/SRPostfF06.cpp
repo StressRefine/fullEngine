@@ -101,7 +101,7 @@ void SRpostProcess::OutputF06()
 	//double lengthConv = model.lengthUnitConversion;
 	double stressConv = 1.0;
 
-	double svm;
+	double svm, sp1, sp2, sp3;
 	double stress[6];
 
 	//don't do displacements because they will look funny for breakout models
@@ -115,16 +115,6 @@ void SRpostProcess::OutputF06()
 		elem = model.GetElement(e);
 		double scaleClip = model.stressMax;
 		bool scaleNodeStress = false;
-#if 0
-		if (model.breakout)
-		{
-			if (elem->checkAnyNodeBreakout())
-			{
-				scaleClip *= 0.8;
-				scaleNodeStress = true;
-			}
-		}
-#endif
 		elem->SetBasisData();
 		nlines++;
 		int euid = elem->GetUserid() + UidAdd;
@@ -138,6 +128,7 @@ void SRpostProcess::OutputF06()
 		model.map.ElementCentroid(elem, r, s, t);
 		elem->GetStress(r, s, t, stress);
 		svm = model.math.GetSvm(stress);
+		model.math.GetPrinStress(stress, sp1, sp2, sp3);
 		if (elem->id == model.maxStressElid)
 			elem->scaleStress(stress, svm, 1.0);
 		else
@@ -150,7 +141,9 @@ void SRpostProcess::OutputF06()
 		model.f06outFile.Print("  X  %13s", bdfbuf);
 		bdfEwrite(stress[xyComponent]);
 		model.f06outFile.Print("  XY  %13s", bdfbuf);
-		model.f06outFile.Print("   A   0.0           LX 0.00 1.00 0.00            0.0");
+		bdfEwrite(sp1);
+		model.f06outFile.Print("   A   %13s LX 0.00 1.00 0.00            0.0", bdfbuf);
+
 		bdfEwrite(svm);
 		model.f06outFile.PrintLine("   %13s", bdfbuf);
 		nlines++;
@@ -158,13 +151,16 @@ void SRpostProcess::OutputF06()
 		model.f06outFile.Print("                         Y  %13s", bdfbuf);
 		bdfEwrite(stress[yzComponent]);
 		model.f06outFile.Print("  YZ  %13s", bdfbuf);
-		model.f06outFile.PrintLine("   B   0.0           LY 0.00 1.00 0.00");
+		bdfEwrite(sp2);
+		model.f06outFile.PrintLine("   B   %13s LY 0.00 1.00 0.00", bdfbuf);
 		nlines++;
 		bdfEwrite(stress[zzComponent]);
 		model.f06outFile.Print("                         Z  %13s", bdfbuf);
 		bdfEwrite(stress[xzComponent]);
 		model.f06outFile.Print("  ZX  %13s", bdfbuf);
-		model.f06outFile.PrintLine("   C   0.0           LZ 0.00 1.00 0.00");
+		bdfEwrite(sp3);
+		model.f06outFile.PrintLine("   C   %13s LZ 0.00 1.00 0.00", bdfbuf);
+
 		pageCheckF06(nlines);
 
 		for (int i = 0; i < nn; i++)
@@ -177,6 +173,7 @@ void SRpostProcess::OutputF06()
 			for (int c = 0; c < 6; c++)
 				stress[c] = stressConv*nodalStress.Get(id, c);
 			svm = model.math.GetSvm(stress);
+			model.math.GetPrinStress(stress, sp1, sp2, sp3);
 			if (scaleNodeStress)
 				elem->scaleStress(stress, svm, scaleClip);
 			int nuid = node->GetUserid() + UidAdd;
@@ -185,7 +182,8 @@ void SRpostProcess::OutputF06()
 			model.f06outFile.Print("  X  %13s", bdfbuf);
 			bdfEwrite(stress[xyComponent]);
 			model.f06outFile.Print("  XY  %13s", bdfbuf);
-			model.f06outFile.Print("   A   0.0           LX 0.00 1.00 0.00            0.0");
+			bdfEwrite(sp1);
+			model.f06outFile.Print("   A   %13s LX 0.00 1.00 0.00            0.0", bdfbuf);
 			bdfEwrite(svm);
 			model.f06outFile.PrintLine("   %13s", bdfbuf);
 			nlines++;
@@ -193,18 +191,19 @@ void SRpostProcess::OutputF06()
 			model.f06outFile.Print("                         Y  %13s", bdfbuf);
 			bdfEwrite(stress[yzComponent]);
 			model.f06outFile.Print("  YZ  %13s", bdfbuf);
-			model.f06outFile.PrintLine("   B   0.0           LY 0.00 1.00 0.00");
+			bdfEwrite(sp2);
+			model.f06outFile.PrintLine("   B   %13s LY 0.00 1.00 0.00", bdfbuf);
 			nlines++;
 			bdfEwrite(stress[zzComponent]);
 			model.f06outFile.Print("                         Z  %13s", bdfbuf);
 			bdfEwrite(stress[xzComponent]);
 			model.f06outFile.Print("  ZX  %13s", bdfbuf);
-			model.f06outFile.PrintLine("   C   0.0           LZ 0.00 1.00 0.00");
+			bdfEwrite(sp3);
+			model.f06outFile.PrintLine("   C   %13s LZ 0.00 1.00 0.00", bdfbuf);
 			pageCheckF06(nlines);
 		}
 	}
 	model.f06outFile.Close();
-
 }
 
 static int npage = 2;//skip the fixed two pages in the header
