@@ -46,13 +46,6 @@ static char bdfbuf[20];
 static void bdfEwrite(double r)
 {
 	SPRINTF(bdfbuf, "%13.6lE", r);
-	int l = strlen(bdfbuf);
-	char e1 = bdfbuf[l - 2];
-	char e2 = bdfbuf[l - 1];
-	//strip off extra 0, e.g E+001 -> e+01
-	bdfbuf[l - 3] = e1;
-	bdfbuf[l - 2] = e2;
-	bdfbuf[l - 1] = '\0';
 }
 
 static int brickBdftoSR[20] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19, 12, 13, 14, 15 };
@@ -89,10 +82,10 @@ void SRpostProcess::OutputF06()
 		UidAdd = 1;
 
 	int nlines = 0;
-	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                            JULY  12, 2014  NX NASTRAN  8/25/13   PAGE    1");
+	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                                            NX NASTRAN            PAGE    1");
 	model.f06outFile.PrintLine("                                                                                                                                    ");
 	model.f06outFile.PrintLine("0                                                                                                                                   ");
-	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                            JULY  12, 2014  NX NASTRAN  8/25/13   PAGE    2");
+	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                                            NX NASTRAN            PAGE    2");
 	model.f06outFile.PrintLine("                                                                                                                                    ");
 	model.f06outFile.PrintLine("0                                                                                                                                   ");
 	model.f06outFile.PrintLine(" ");
@@ -224,7 +217,7 @@ void SRpostProcess::pageCheckF06(int& nlines, bool disp)
 void SRpostProcess::writeHeaderF06()
 {
 	model.f06outFile.PrintLine("  ");
-	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                            JULY  12, 2014  NX NASTRAN  8/25/13   PAGE%6d", npage);
+	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                                            NX NASTRAN            PAGE%6d", npage);
 	model.f06outFile.PrintLine("  ");
 	model.f06outFile.PrintLine("0 ");
 	model.f06outFile.PrintLine("  ");
@@ -242,7 +235,7 @@ void SRpostProcess::writeHeaderF06()
 void SRpostProcess::writeDispHeaderF06()
 {
 	model.f06outFile.PrintLine("  ");
-	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                            JULY  12, 2014  NX NASTRAN  8/25/13   PAGE%6d", npage);
+	model.f06outFile.PrintLine("1    NX NASTRAN STATIC ANALYSIS SET                                                            NX NASTRAN            PAGE%6d", npage);
 	model.f06outFile.PrintLine("  ");
 	model.f06outFile.PrintLine("0 ");
 	model.f06outFile.PrintLine("  ");

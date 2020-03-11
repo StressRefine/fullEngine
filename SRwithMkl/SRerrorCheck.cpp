@@ -82,11 +82,7 @@ double SRerrorCheck::FindError(SRelement *elem)
 	double error = MATHMAX(errorSmoothRaw, errorFaceJumps);
 
 	if (!elem->isSacrificial())
-	{
-		//04/15 errorSmoothRaw can be too conservative. use face jump error for reporting, less conservative
-		error = errorFaceJumps;
 		model.SetErrorMax(error, elem->GetUserid(), errorSmoothRaw, errorFaceJumps);
-	}
 
 	elem->PutError(error);
     return error;

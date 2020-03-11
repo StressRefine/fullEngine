@@ -267,7 +267,8 @@ void SRmodel::Run()
 			adapted = Adapt(its, CHECKERRORONLY);//final pass. CheckErroronly is true
 
 		errForOutput = errorChecker.CalculateMaxErrorForOutput();
-		OUTPRINT("Estimated Error in Stress Calculation: %6.2lg percent", errForOutput);
+		OUTPRINT("Maximum Local Error in model: %6.2lg percent", errorMax*100.0);
+		OUTPRINT("Estimated Error in Maximum Stress Calculation: %6.2lg percent", errForOutput);
 		OUTPRINT("Maximum von Mises Stress in Model: %lg\n", stressUnitConversion*stressMax);
 		sumFile.PrintLine("MaxError: %lg", errorMax);
 		sumFile.PrintLine("MaxVm: %lg", stressUnitConversion*stressMax);
